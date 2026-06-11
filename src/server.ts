@@ -41,8 +41,13 @@ export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const url = new URL(request.url);
-      // Redirect www.erhatradelinkinternational.com to erhatradelinkinternational.com
-      if (url.hostname === "www.erhatradelinkinternational.com") {
+      // Redirect all production domains to erhatradelinkinternational.com
+      if (
+        url.hostname !== "erhatradelinkinternational.com" &&
+        !url.hostname.includes("localhost") &&
+        !url.hostname.includes("127.0.0.1") &&
+        !url.hostname.endsWith(".local")
+      ) {
         url.hostname = "erhatradelinkinternational.com";
         return Response.redirect(url.toString(), 301);
       }
