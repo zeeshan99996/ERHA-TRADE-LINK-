@@ -128,6 +128,20 @@ function CheckoutComponent() {
       };
 
       const newOrder = db.createOrder(orderParams);
+
+      if (appliedCoupon) {
+        try {
+          const coupons = db.getCoupons();
+          const targetCoupon = coupons.find((c) => c.id === appliedCoupon.id);
+          if (targetCoupon) {
+            targetCoupon.usageCount = (targetCoupon.usageCount || 0) + 1;
+            db.saveCoupon(targetCoupon);
+          }
+        } catch (couponErr) {
+          console.error("Failed to update coupon usage count:", couponErr);
+        }
+      }
+
       clearCart();
       setOrderSuccess(newOrder);
       toast.success("Order placed successfully!");
