@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { toast } from 'sonner';
+import { db } from '@/lib/supabase';
 import {
   Bell,
   Search,
