@@ -37,48 +37,7 @@ interface Notification {
 
 // ─── STATIC DATA ─────────────────────────────────────────────────────────────
 
-const notifications: Notification[] = [
-  {
-    id: 'N1',
-    type: 'order',
-    title: 'New Order Received',
-    description: 'ORD-2024-015 from Umar Farooq — Rs. 5,998',
-    time: '2 min ago',
-    read: false,
-  },
-  {
-    id: 'N2',
-    type: 'stock',
-    title: 'Low Stock Alert',
-    description: 'ERHA SlimPower 10000 has only 8 units left',
-    time: '15 min ago',
-    read: false,
-  },
-  {
-    id: 'N3',
-    type: 'review',
-    title: 'New Review Pending',
-    description: 'Hassan Tariq left a 2★ review on Gaming Headset',
-    time: '1 hr ago',
-    read: false,
-  },
-  {
-    id: 'N4',
-    type: 'payment',
-    title: 'Payment Received',
-    description: 'JazzCash payment confirmed for ORD-2024-011',
-    time: '2 hr ago',
-    read: true,
-  },
-  {
-    id: 'N5',
-    type: 'order',
-    title: 'Order Delivered',
-    description: 'ORD-2024-006 delivered to Zainab Akhtar in Faisalabad',
-    time: '3 hr ago',
-    read: true,
-  },
-];
+
 
 const notificationIcon = (type: Notification['type']) => {
   switch (type) {
@@ -88,6 +47,23 @@ const notificationIcon = (type: Notification['type']) => {
     case 'payment': return { icon: CheckCircle, bg: 'rgba(34,197,94,0.15)', color: '#4ade80' };
   }
 };
+
+function formatNotifTime(timeStr: string) {
+  try {
+    const date = new Date(timeStr);
+    if (isNaN(date.getTime())) return timeStr;
+    const diff = Date.now() - date.getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    return `${days}d ago`;
+  } catch {
+    return timeStr;
+  }
+}
 
 const avatarMenuItems = [
   { icon: User, label: 'My Profile', description: 'View admin profile', to: '/admin/settings' },
@@ -102,12 +78,22 @@ export default function AdminHeader({ title, subtitle, onMenuToggle }: AdminHead
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAvatar, setShowAvatar] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
-  const [notifList, setNotifList] = useState<Notification[]>(notifications);
+  const [notifList, setNotifList] = useState<any[]>([]);
 
   const notifRef = useRef<HTMLDivElement>(null);
   const avatarRef = useRef<HTMLDivElement>(null);
 
   const unreadCount = notifList.filter(n => !n.read).length;
+
+  const syncNotifs = () => {
+    setNotifList(db.getNotifications());
+  };
+
+  useEffect(() => {
+    syncNotifs();
+    window.addEventListener('storage', syncNotifs);
+    return () => window.removeEventListener('storage', syncNotifs);
+  }, []);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -124,12 +110,14 @@ export default function AdminHeader({ title, subtitle, onMenuToggle }: AdminHead
   }, []);
 
   const markAllRead = () => {
-    setNotifList(prev => prev.map(n => ({ ...n, read: true })));
+    db.markAllNotificationsRead();
+    syncNotifs();
   };
 
   const dismissNotif = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setNotifList(prev => prev.filter(n => n.id !== id));
+    db.dismissNotification(id);
+    syncNotifs();
   };
 
   return (
@@ -240,7 +228,7 @@ export default function AdminHeader({ title, subtitle, onMenuToggle }: AdminHead
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 8, scale: 0.96 }}
                 transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
-                className="absolute right-0 top-12 w-80 rounded-2xl overflow-hidden z-50"
+                className="absolute right-0 top-12 w-[calc(100vw-2rem)] sm:w-80 max-w-sm rounded-2xl overflow-hidden z-50"
                 style={{
                   background: 'rgba(255,255,255,0.95)',
                   backdropFilter: 'blur(20px)',
@@ -312,7 +300,7 @@ export default function AdminHeader({ title, subtitle, onMenuToggle }: AdminHead
                               {notif.description}
                             </p>
                             <p className="text-xs mt-1" style={{ color: '#94a3b8' }}>
-                              {notif.time}
+                              {formatNotifTime(notif.time)}
                             </p>
                           </div>
 
