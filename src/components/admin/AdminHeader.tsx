@@ -439,6 +439,7 @@ export default function AdminHeader({ title, subtitle, onMenuToggle }: AdminHead
                 <div className="px-3 py-2.5" style={{ borderTop: '1px solid #F1F5F9' }}>
                   <button
                     onClick={() => {
+                      localStorage.removeItem('erha_admin_auth');
                       setShowAvatar(false);
                       toast.success('Successfully signed out of Admin Panel');
                       navigate({ to: '/' });

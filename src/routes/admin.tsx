@@ -2,17 +2,31 @@ import { createFileRoute, Outlet, useRouterState } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 import AdminHeader from '@/components/admin/AdminHeader'
+import AdminLogin from '@/components/admin/AdminLogin'
 
 export const Route = createFileRoute('/admin')({
   component: AdminLayout,
 })
 
 function AdminLayout() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('erha_admin_auth') === 'true';
+  })
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const routerState = useRouterState()
   const pathname = routerState.location.pathname
+
+  // Sync auth state from storage events (e.g. if logged out in another tab)
+  useEffect(() => {
+    const syncAuth = () => {
+      setIsAuthenticated(localStorage.getItem('erha_admin_auth') === 'true');
+    };
+    window.addEventListener('storage', syncAuth);
+    return () => window.removeEventListener('storage', syncAuth);
+  }, []);
 
   // Detect screen size
   useEffect(() => {
@@ -44,6 +58,10 @@ function AdminLayout() {
     '/admin/categories': { title: 'Categories', subtitle: 'Manage product categories' },
   }
   const current = titleMap[pathname] ?? { title: 'Admin', subtitle: '' }
+
+  if (!isAuthenticated) {
+    return <AdminLogin onLoginSuccess={() => setIsAuthenticated(true)} />
+  }
 
   return (
     <div className="flex h-screen bg-[#F8FAFC] overflow-hidden relative">
