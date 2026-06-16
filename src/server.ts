@@ -44,6 +44,7 @@ export default {
       // Redirect all production domains to erhatradelinkinternational.com
       if (
         url.hostname !== "erhatradelinkinternational.com" &&
+        url.hostname !== "www.erhatradelinkinternational.com" &&
         !url.hostname.includes("localhost") &&
         !url.hostname.includes("127.0.0.1") &&
         !url.hostname.endsWith(".local")
