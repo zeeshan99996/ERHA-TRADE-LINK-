@@ -1,10 +1,18 @@
-import { Link } from "@tanstack/react-router";
-import { Search, User, Heart, ShoppingCart, Menu } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { Search, User, Heart, ShoppingCart, Menu, Shield } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import logoImg from "@/assets/erha-logo.png";
 import { products } from "@/lib/products";
+import { getCartCount } from "@/lib/cart";
+import { openCartDrawer } from "@/components/site/CartDrawer";
 
-const navItems = ["Home", "Shop", "Categories", "Deals", "Contact"];
+const navItems = [
+  { name: "Home", to: "/" },
+  { name: "Shop", to: "/shop" },
+  { name: "Categories", to: "/#categories" },
+  { name: "Deals", to: "/shop", search: { category: "Ultra Compact" } },
+  { name: "Contact", to: "/#footer" }
+];
 
 const trendingSearches = ["Wireless Earbuds", "Smart Watches", "Power Banks", "Speakers", "Chargers"];
 
@@ -12,9 +20,35 @@ export function Header() {
   const [open, setOpen] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchVal, setSearchVal] = useState("");
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const mobileSearchRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLFormElement>(null);
+  const mobileSearchRef = useRef<HTMLFormElement>(null);
   const [showMobileDropdown, setShowMobileDropdown] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    setCartCount(getCartCount());
+    const handleUpdate = () => {
+      setCartCount(getCartCount());
+    };
+    window.addEventListener("erha_cart_update", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener("erha_cart_update", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, []);
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setShowDropdown(false);
+    setShowMobileDropdown(false);
+    setOpen(false);
+    navigate({
+      to: "/shop",
+      search: { search: searchVal },
+    });
+  };
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -47,18 +81,18 @@ export function Header() {
         </div>
 
         {/* Center: Search Bar */}
-        <div ref={dropdownRef} className="hidden flex-1 max-w-xl lg:flex justify-center relative">
+        <form onSubmit={handleSearchSubmit} ref={dropdownRef} className="hidden flex-1 max-w-xl lg:flex justify-center relative">
           <div className="group relative flex w-full items-center overflow-hidden rounded-full border border-border bg-card pl-5 pr-1.5 shadow-soft transition focus-within:border-brand focus-within:shadow-glow">
             <Search className="size-4 text-muted-foreground shrink-0" />
             <input
               type="text"
-              placeholder="Search earbuds, watches, chargers…"
+              placeholder="Search power banks, chargers…"
               className="w-full bg-transparent px-3 py-3 text-sm outline-none placeholder:text-muted-foreground"
               value={searchVal}
               onChange={(e) => setSearchVal(e.target.value)}
               onFocus={() => setShowDropdown(true)}
             />
-            <button className="rounded-full gradient-brand px-5 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:opacity-95 shrink-0">
+            <button type="submit" className="rounded-full gradient-brand px-5 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:opacity-95 shrink-0 cursor-pointer">
               Search
             </button>
           </div>
@@ -74,10 +108,13 @@ export function Header() {
                     {trendingSearches.map((item) => (
                       <li key={item}>
                         <button
+                          type="button"
                           onClick={() => {
                             setSearchVal(item);
+                            navigate({ to: "/shop", search: { search: item } });
+                            setShowDropdown(false);
                           }}
-                          className="flex items-center gap-2 text-sm text-ink/80 hover:text-brand transition duration-150 w-full text-left"
+                          className="flex items-center gap-2 text-sm text-ink/80 hover:text-brand transition duration-150 w-full text-left cursor-pointer"
                         >
                           <Search className="size-3.5 text-muted-foreground" />
                           {item}
@@ -94,7 +131,8 @@ export function Header() {
                     {latestProducts.map((p) => (
                       <Link
                         key={p.id}
-                        to="/"
+                        to="/product/$id"
+                        params={{ id: p.id }}
                         className="flex items-center gap-3 p-1.5 rounded-xl hover:bg-muted/50 transition duration-150 group"
                         onClick={() => setShowDropdown(false)}
                       >
@@ -118,13 +156,16 @@ export function Header() {
               </div>
             </div>
           )}
-        </div>
+        </form>
 
         {/* Right: Actions */}
         <div className="flex lg:w-48 shrink-0 items-center justify-end gap-1 sm:gap-2">
-          <IconBtn label="Account"><User className="size-5" /></IconBtn>
-          <IconBtn label="Wishlist" badge="3"><Heart className="size-5" /></IconBtn>
-          <IconBtn label="Cart" badge="2"><ShoppingCart className="size-5" /></IconBtn>
+
+          <IconBtn label="Account" onClick={() => navigate({ to: "/admin" })}><User className="size-5" /></IconBtn>
+          <IconBtn label="Wishlist"><Heart className="size-5" /></IconBtn>
+          <IconBtn label="Cart" badge={cartCount > 0 ? String(cartCount) : undefined} onClick={openCartDrawer}>
+            <ShoppingCart className="size-5" />
+          </IconBtn>
           <button
             className="ml-1 inline-flex size-10 items-center justify-center rounded-full border border-border lg:hidden"
             onClick={() => setOpen((s) => !s)}
@@ -139,24 +180,25 @@ export function Header() {
         <div className="mx-auto max-w-7xl px-6 relative flex items-center justify-center">
           <ul className="flex items-center gap-1">
             {navItems.map((n) => (
-              <li key={n}>
-                <a
-                  href="#"
+              <li key={n.name}>
+                <Link
+                  to={n.to}
+                  search={n.search}
                   className="relative inline-flex items-center px-4 py-3 text-sm font-medium text-ink/80 transition hover:text-brand"
                 >
-                  {n}
-                </a>
+                  {n.name}
+                </Link>
               </li>
             ))}
           </ul>
-          <div className="absolute right-6 text-sm font-medium text-brand">📞 +92 300 1234567</div>
+          <div className="absolute right-6 text-sm font-medium text-brand">📞 0302-3333499</div>
         </div>
       </nav>
 
       {open && (
         <div className="border-t border-border bg-card lg:hidden">
           <div className="space-y-1 px-4 py-3">
-            <div ref={mobileSearchRef} className="relative mb-3">
+            <form onSubmit={handleSearchSubmit} ref={mobileSearchRef} className="relative mb-3">
               <div className="flex items-center gap-2 rounded-full border border-border px-4 py-2 bg-card">
                 <Search className="size-4 text-muted-foreground" />
                 <input
@@ -178,11 +220,13 @@ export function Header() {
                         {trendingSearches.map((item) => (
                           <button
                             key={item}
+                            type="button"
                             onClick={() => {
                               setSearchVal(item);
                               setShowMobileDropdown(false);
+                              navigate({ to: "/shop", search: { search: item } });
                             }}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-muted text-xs text-ink/80 hover:bg-muted/80 hover:text-brand transition"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-muted text-xs text-ink/80 hover:bg-muted/80 hover:text-brand transition cursor-pointer"
                           >
                             {item}
                           </button>
@@ -195,7 +239,8 @@ export function Header() {
                         {latestProducts.map((p) => (
                           <Link
                             key={p.id}
-                            to="/"
+                            to="/product/$id"
+                            params={{ id: p.id }}
                             className="flex items-center gap-2.5 p-1 rounded-lg hover:bg-muted/50 transition duration-150"
                             onClick={() => {
                               setShowMobileDropdown(false);
@@ -216,10 +261,24 @@ export function Header() {
                   </div>
                 </div>
               )}
-            </div>
+            </form>
             {navItems.map((n) => (
-              <a key={n} href="#" className="block rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted">{n}</a>
+              <Link
+                key={n.name}
+                to={n.to}
+                search={n.search}
+                onClick={() => setOpen(false)}
+                className="block rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted"
+              >
+                {n.name}
+              </Link>
             ))}
+            {/* Mobile Admin Link */}
+            <div className="pt-2 mt-2 border-t border-border">
+              <a href="tel:03023333499" className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-brand mt-1">
+                📞 0302-3333499
+              </a>
+            </div>
           </div>
         </div>
       )}
@@ -227,11 +286,12 @@ export function Header() {
   );
 }
 
-function IconBtn({ children, label, badge }: { children: React.ReactNode; label: string; badge?: string }) {
+function IconBtn({ children, label, badge, onClick }: { children: React.ReactNode; label: string; badge?: string; onClick?: () => void }) {
   return (
     <button
+      onClick={onClick}
       aria-label={label}
-      className="relative inline-flex size-10 items-center justify-center rounded-full text-ink transition hover:bg-muted"
+      className="relative inline-flex size-10 items-center justify-center rounded-full text-ink transition hover:bg-muted cursor-pointer"
     >
       {children}
       {badge && (

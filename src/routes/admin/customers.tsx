@@ -18,7 +18,26 @@ import {
   MessageSquare,
   Save,
 } from 'lucide-react';
-import { adminCustomers, type AdminCustomer } from '@/lib/admin-data';
+import { useEffect } from 'react';
+import { db } from '@/lib/supabase';
+
+export type AdminCustomer = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  totalOrders: number;
+  totalSpend: number;
+  totalSpending?: number;
+  joinDate?: string;
+  created_at?: string;
+  lastOrderDate?: string;
+  notes: string;
+  status: 'Active' | 'Inactive';
+  avatarColor?: string;
+};
 
 export const Route = createFileRoute('/admin/customers')({
   component: CustomersPage,
@@ -103,14 +122,24 @@ function StatusBadge({ status }: { status: AdminCustomer['status'] }) {
 function CustomerSlideOver({
   customer,
   onClose,
+  onSave,
 }: {
   customer: AdminCustomer | null;
   onClose: () => void;
+  onSave: (c: any) => void;
 }) {
   const [notes, setNotes] = useState(customer?.notes ?? '');
   const [saved, setSaved] = useState(false);
 
+  useEffect(() => {
+    if (customer) {
+      setNotes(customer.notes ?? '');
+    }
+  }, [customer]);
+
   const handleSave = () => {
+    if (!customer) return;
+    onSave({ ...customer, notes });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -193,7 +222,7 @@ function CustomerSlideOver({
                   </div>
                   <div className="bg-emerald-50 rounded-xl p-4">
                     <TrendingUp className="w-5 h-5 text-emerald-500 mb-1" />
-                    <p className="text-lg font-bold text-emerald-700">{fmtRs(customer.totalSpending)}</p>
+                    <p className="text-lg font-bold text-emerald-700">{fmtRs(customer.totalSpend ?? customer.totalSpending ?? 0)}</p>
                     <p className="text-xs text-emerald-500 font-medium">Total Spent</p>
                   </div>
                 </div>
@@ -207,7 +236,7 @@ function CustomerSlideOver({
                     <span className="text-gray-500 flex items-center gap-2">
                       <Calendar className="w-4 h-4" /> Joined
                     </span>
-                    <span className="font-medium text-gray-800">{fmtDate(customer.joinDate)}</span>
+                    <span className="font-medium text-gray-800">{fmtDate(customer.created_at ?? customer.joinDate ?? new Date().toISOString())}</span>
                   </div>
                   {customer.lastOrderDate && (
                     <div className="flex items-center justify-between text-sm">
@@ -255,19 +284,30 @@ function CustomerSlideOver({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 function CustomersPage() {
+  const [customers, setCustomers] = useState<AdminCustomer[]>([]);
   const [search, setSearch] = useState('');
   const [cityFilter, setCityFilter] = useState('All Cities');
   const [statusFilter, setStatusFilter] = useState('All');
   const [selectedCustomer, setSelectedCustomer] = useState<AdminCustomer | null>(null);
 
-  const totalCustomers = adminCustomers.length;
-  const activeCount = adminCustomers.filter((c) => c.status === 'Active').length;
-  const inactiveCount = adminCustomers.filter((c) => c.status === 'Inactive').length;
-  const avgOrderValue = Math.round(
-    adminCustomers.reduce((sum, c) => sum + c.totalSpending / Math.max(c.totalOrders, 1), 0) / totalCustomers
-  );
+  const syncCustomers = () => setCustomers(db.getCustomers());
 
-  const filtered = adminCustomers.filter((c) => {
+  useEffect(() => {
+    syncCustomers();
+    window.addEventListener('storage', syncCustomers);
+    return () => window.removeEventListener('storage', syncCustomers);
+  }, []);
+
+  const totalCustomers = customers.length;
+  const activeCount = customers.filter((c) => c.status === 'Active').length;
+  const inactiveCount = customers.filter((c) => c.status === 'Inactive').length;
+  const avgOrderValue = totalCustomers > 0
+    ? Math.round(
+        customers.reduce((sum, c) => sum + (c.totalSpend ?? c.totalSpending ?? 0) / Math.max(c.totalOrders, 1), 0) / totalCustomers
+      )
+    : 0;
+
+  const filtered = customers.filter((c) => {
     const matchSearch =
       c.name.toLowerCase().includes(search.toLowerCase()) ||
       c.email.toLowerCase().includes(search.toLowerCase()) ||
@@ -279,7 +319,15 @@ function CustomersPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <CustomerSlideOver customer={selectedCustomer} onClose={() => setSelectedCustomer(null)} />
+      <CustomerSlideOver 
+        customer={selectedCustomer} 
+        onClose={() => setSelectedCustomer(null)} 
+        onSave={(updatedCust) => {
+          db.saveCustomer(updatedCust);
+          syncCustomers();
+          setSelectedCustomer(updatedCust);
+        }}
+      />
 
       {/* Page Header */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
@@ -417,12 +465,12 @@ function CustomersPage() {
 
                   {/* Total Spent */}
                   <td className="px-5 py-4">
-                    <span className="text-sm font-semibold text-indigo-700">{fmtRs(c.totalSpending)}</span>
+                    <span className="text-sm font-semibold text-indigo-700">{fmtRs(c.totalSpend ?? c.totalSpending ?? 0)}</span>
                   </td>
 
                   {/* Joined */}
                   <td className="px-5 py-4">
-                    <span className="text-sm text-gray-500">{fmtDate(c.joinDate)}</span>
+                    <span className="text-sm text-gray-500">{fmtDate(c.created_at ?? c.joinDate ?? new Date().toISOString())}</span>
                   </td>
 
                   {/* Status */}

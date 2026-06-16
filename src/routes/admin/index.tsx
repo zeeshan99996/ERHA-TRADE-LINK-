@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { useState, useEffect } from 'react'
 import { motion } from 'motion/react'
 import {
   AreaChart,
@@ -11,7 +12,6 @@ import {
   PieChart,
   Pie,
   Cell,
-  Legend,
 } from 'recharts'
 import {
   TrendingUp,
@@ -23,16 +23,74 @@ import {
   AlertTriangle,
   ArrowRight,
 } from 'lucide-react'
-import {
-  revenueData,
-  categoryData,
-  adminOrders,
-  adminProducts,
-} from '@/lib/admin-data'
+import { db } from '@/lib/supabase'
 
 export const Route = createFileRoute('/admin/')({
   component: DashboardPage,
 })
+
+// ─── Dynamic Chart Data Helpers ─────────────────────────────────────────────
+
+const getRevenueChartData = (orders: any[]) => {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const result = []
+  const now = new Date()
+  
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const monthName = months[d.getMonth()]
+    const yearVal = d.getFullYear()
+    
+    const matchingOrders = orders.filter(o => {
+      const orderDate = new Date(o.date)
+      return orderDate.getMonth() === d.getMonth() && orderDate.getFullYear() === yearVal && o.orderStatus !== 'Cancelled'
+    })
+    
+    const revenue = matchingOrders.reduce((sum, o) => sum + (o.total || 0), 0)
+    const ordersCount = matchingOrders.length
+    
+    result.push({
+      month: `${monthName}`,
+      revenue,
+      orders: ordersCount,
+    })
+  }
+  return result
+}
+
+const getCategoryChartData = (products: any[]) => {
+  const CATEGORY_COLORS: Record<string, string> = {
+    'Ultra Compact': '#6366F1',
+    'Laptop Power Banks': '#8B5CF6',
+    'MagSafe & Wireless': '#10B981',
+    'High Capacity': '#F59E0B',
+    'Rugged & Solar': '#EF4444',
+  }
+  
+  const counts: Record<string, number> = {}
+  let total = 0
+  
+  products.forEach(p => {
+    if (p.category) {
+      counts[p.category] = (counts[p.category] || 0) + 1
+      total++
+    }
+  })
+  
+  if (total === 0) {
+    return Object.entries(CATEGORY_COLORS).map(([name, color]) => ({
+      name,
+      value: 0,
+      color,
+    }))
+  }
+  
+  return Object.entries(counts).map(([name, count]) => ({
+    name,
+    value: Math.round((count / total) * 100),
+    color: CATEGORY_COLORS[name] || '#94A3B8',
+  }))
+}
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -158,25 +216,48 @@ function CustomLegend({ payload }: { payload?: Array<{ value: string; color: str
 // ─── Dashboard Page ───────────────────────────────────────────────────────────
 
 function DashboardPage() {
+  const [products, setProducts] = useState<any[]>([])
+  const [orders, setOrders] = useState<any[]>([])
+  const [customersCount, setCustomersCount] = useState(0)
+
+  useEffect(() => {
+    setProducts(db.getProducts())
+    setOrders(db.getOrders())
+    setCustomersCount(db.getCustomers().length)
+
+    const syncAll = () => {
+      setProducts(db.getProducts())
+      setOrders(db.getOrders())
+      setCustomersCount(db.getCustomers().length)
+    }
+
+    window.addEventListener('storage', syncAll)
+    return () => window.removeEventListener('storage', syncAll)
+  }, [])
+
   // Compute totals
-  const totalRevenue = revenueData.reduce((s, d) => s + d.revenue, 0)
-  const totalOrders = adminOrders.length
+  const activeOrders = orders.filter(o => o.orderStatus !== 'Cancelled')
+  const totalRevenue = activeOrders.reduce((s, d) => s + (d.total || 0), 0)
+  const totalOrders = orders.length
 
   // Compute low stock products (stock < minStock)
-  const lowStockProducts = adminProducts.filter(
-    (p) => p.stock < (p.minStock ?? 10)
+  const lowStockProducts = products.filter(
+    (p) => (p.stock ?? 0) < (p.minStock ?? 10)
   )
 
   // Recent 5 orders
-  const recentOrders = [...adminOrders]
+  const recentOrders = [...orders]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 5)
+
+  const revenueData = getRevenueChartData(orders)
+  const categoryData = getCategoryChartData(products)
 
   const stats = [
     {
       title: 'Total Revenue',
-      value: formatPKR(totalRevenue),
-      trend: '+12.4%',
+      value: formatPKRFull(totalRevenue),
+      trend: totalRevenue > 0 ? '+100%' : '0%',
       trendUp: true,
       icon: <DollarSign className="w-5 h-5 text-indigo-600" />,
       iconBg: 'bg-indigo-100',
@@ -185,7 +266,7 @@ function DashboardPage() {
     {
       title: 'Total Orders',
       value: String(totalOrders),
-      trend: '+8.1%',
+      trend: totalOrders > 0 ? '+100%' : '0%',
       trendUp: true,
       icon: <ShoppingBag className="w-5 h-5 text-violet-600" />,
       iconBg: 'bg-violet-100',
@@ -193,8 +274,8 @@ function DashboardPage() {
     },
     {
       title: 'Active Customers',
-      value: '248',
-      trend: '+5.6%',
+      value: String(customersCount),
+      trend: customersCount > 0 ? '+100%' : '0%',
       trendUp: true,
       icon: <Users className="w-5 h-5 text-emerald-600" />,
       iconBg: 'bg-emerald-100',
@@ -203,7 +284,7 @@ function DashboardPage() {
     {
       title: 'Low Stock Items',
       value: String(lowStockProducts.length),
-      trend: '+2',
+      trend: lowStockProducts.length > 0 ? `${lowStockProducts.length} items` : '0 items',
       trendUp: false,
       icon: <Package className="w-5 h-5 text-amber-600" />,
       iconBg: 'bg-amber-100',
@@ -360,7 +441,7 @@ function DashboardPage() {
                   const customerName = typeof order.customer === 'string'
                     ? order.customer
                     : (order.customer as { name: string }).name
-                  const statusStyle = STATUS_COLORS[order.status] ?? { bg: 'bg-slate-50', text: 'text-slate-600', dot: 'bg-slate-400' }
+                  const statusStyle = STATUS_COLORS[order.orderStatus] ?? { bg: 'bg-slate-50', text: 'text-slate-600', dot: 'bg-slate-400' }
                   return (
                     <motion.tr
                       key={order.id}
@@ -381,7 +462,7 @@ function DashboardPage() {
                       <td className="px-3 py-4">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${statusStyle.bg} ${statusStyle.text}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot}`} />
-                          {order.status}
+                          {order.orderStatus}
                         </span>
                       </td>
                       <td className="px-3 py-4 pr-6">

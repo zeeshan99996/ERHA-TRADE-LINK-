@@ -7,34 +7,32 @@ export type Product = {
   oldPrice?: number;
   rating: number;
   reviews: number;
-  badge?: "New" | "Hot" | "-20%" | "-30%" | "Best Seller";
+  badge?: string;
 };
 
 const img = (q: string, sig: number) =>
   `https://images.unsplash.com/${q}?auto=format&fit=crop&w=900&q=80&sig=${sig}`;
 
 export const products: Product[] = [
-  { id: "p1", name: "Aero Pro Wireless Earbuds", category: "Earbuds", image: img("photo-1606220945770-b5b6c2c55bf1", 1), price: 6499, oldPrice: 8999, rating: 4.8, reviews: 1284, badge: "Hot" },
-  { id: "p2", name: "Pulse X Smart Watch Series 7", category: "Smart Watch", image: img("photo-1546868871-7041f2a55e12", 2), price: 12999, oldPrice: 15999, rating: 4.7, reviews: 942, badge: "-20%" },
-  { id: "p3", name: "Volt 20K Fast Power Bank", category: "Power Bank", image: img("photo-1609091839311-d5365f9ff1c5", 3), price: 3499, oldPrice: 4499, rating: 4.6, reviews: 612, badge: "Best Seller" },
-  { id: "p4", name: "Sonic Boom Bluetooth Speaker", category: "Speaker", image: img("photo-1608043152269-423dbba4e7e1", 4), price: 5499, oldPrice: 6999, rating: 4.5, reviews: 488 },
-  { id: "p5", name: "GameForge Pro Headset", category: "Gaming", image: img("photo-1612198188060-c7c2a3b66eae", 5), price: 8999, oldPrice: 11999, rating: 4.9, reviews: 1820, badge: "New" },
-  { id: "p6", name: "FluxCharge 65W GaN Adapter", category: "Charger", image: img("photo-1583394838336-acd977736f90", 6), price: 2999, rating: 4.7, reviews: 356 },
-  { id: "p7", name: "Lumen Lite USB-C Cable 1.8m", category: "Cable", image: img("photo-1606293459409-72e0e15c4ef9", 7), price: 799, oldPrice: 1299, rating: 4.4, reviews: 219, badge: "-30%" },
-  { id: "p8", name: "Halo Magnetic Phone Stand", category: "Accessory", image: img("photo-1592890288564-76628a30a657", 8), price: 1799, rating: 4.6, reviews: 174 },
-  { id: "p9", name: "Zen Buds Active Noise Cancel", category: "Earbuds", image: img("photo-1590658268037-6bf12165a8df", 9), price: 9499, oldPrice: 11499, rating: 4.8, reviews: 752, badge: "New" },
-  { id: "p10", name: "Orbit Round Smart Watch", category: "Smart Watch", image: img("photo-1579586337278-3befd40fd17a", 10), price: 7999, rating: 4.5, reviews: 410 },
-  { id: "p11", name: "TitanCharge 30K Power Bank", category: "Power Bank", image: img("photo-1585338447937-7082f8fc763d", 11), price: 5499, oldPrice: 6499, rating: 4.7, reviews: 309 },
-  { id: "p12", name: "BassCube Mini Speaker", category: "Speaker", image: img("photo-1545454675-3531b543be5d", 12), price: 2799, rating: 4.4, reviews: 287, badge: "New" },
+  { id: "p1", name: "ERHA SlimPower 10000 (MagSafe)", category: "MagSafe & Wireless", image: img("photo-1609592424083-d5d14dfc949a", 1), price: 2499, oldPrice: 3499, rating: 4.8, reviews: 342, badge: "Hot" },
+  { id: "p2", name: "ERHA PowerCore 20000 (65W)", category: "Laptop Power Banks", image: img("photo-1609091839311-d5365f9ff1c5", 2), price: 3499, oldPrice: 4499, rating: 4.7, reviews: 612, badge: "Best Seller" },
+  { id: "p3", name: "ERHA TitanCharge 30000 (100W)", category: "Laptop Power Banks", image: img("photo-1585338447937-7082f8fc763d", 3), price: 5999, oldPrice: 6999, rating: 4.9, reviews: 209, badge: "New" },
+  { id: "p4", name: "ERHA SolarVolt Pocket 12000", category: "Rugged & Solar", image: img("photo-1622445262465-2481c4574875", 4), price: 2999, oldPrice: 3999, rating: 4.5, reviews: 124 },
+  { id: "p5", name: "ERHA MagCore Mini 5000", category: "Ultra Compact", image: img("photo-1592890288564-76628a30a657", 5), price: 1999, oldPrice: 2499, rating: 4.6, reviews: 88, badge: "New" },
+  { id: "p6", name: "ERHA HyperCharge 40000 (140W)", category: "High Capacity", image: img("photo-1583394838336-acd977736f90", 6), price: 8999, oldPrice: 10999, rating: 4.9, reviews: 67, badge: "-20%" },
+  { id: "p7", name: "ERHA PocketPower 10000 (22.5W)", category: "Ultra Compact", image: img("photo-1608248597481-496100c80836", 7), price: 2199, oldPrice: 2999, rating: 4.7, reviews: 145 },
+  { id: "p8", name: "ERHA ToughCharge 20000 (IP67)", category: "Rugged & Solar", image: img("photo-1609091839311-d5365f9ff1c5", 8), price: 4499, oldPrice: 5499, rating: 4.6, reviews: 93 },
+  { id: "p9", name: "ERHA DuoWireless 15000", category: "MagSafe & Wireless", image: img("photo-1609592424083-d5d14dfc949a", 9), price: 3299, oldPrice: 3999, rating: 4.4, reviews: 56 },
+  { id: "p10", name: "ERHA LiteCore 5000 (Built-in Cable)", category: "Ultra Compact", image: img("photo-1592890288564-76628a30a657", 10), price: 1599, oldPrice: 1999, rating: 4.5, reviews: 72 },
+  { id: "p11", name: "ERHA Nomad SolarStation 50000", category: "Rugged & Solar", image: img("photo-1585338447937-7082f8fc763d", 11), price: 12999, oldPrice: 14999, rating: 4.8, reviews: 34, badge: "Hot" },
+  { id: "p12", name: "ERHA ChargeStation Pro 8-Port", category: "High Capacity", image: img("photo-1583394838336-acd977736f90", 12), price: 14999, oldPrice: 17999, rating: 4.7, reviews: 19 },
+  { id: "p13", name: "ERHA PocketCharge Slim 5000", category: "Ultra Compact", image: img("photo-1609592424083-d5d14dfc949a", 13), price: 1499, oldPrice: 1999, rating: 4.4, reviews: 48, badge: "New" },
 ];
 
 export const categories = [
-  { name: "Wireless Earbuds", icon: "headphones", image: img("photo-1590658268037-6bf12165a8df", 21) },
-  { name: "Smart Watches", icon: "watch", image: img("photo-1546868871-7041f2a55e12", 22) },
-  { name: "Power Banks", icon: "battery-charging", image: img("photo-1609091839311-d5365f9ff1c5", 23) },
-  { name: "Bluetooth Speakers", icon: "speaker", image: img("photo-1608043152269-423dbba4e7e1", 24) },
-  { name: "Chargers", icon: "zap", image: img("photo-1583394838336-acd977736f90", 25) },
-  { name: "Gaming Accessories", icon: "gamepad-2", image: img("photo-1612198188060-c7c2a3b66eae", 26) },
-  { name: "Phone Cases", icon: "smartphone", image: img("photo-1592890288564-76628a30a657", 27) },
-  { name: "Data Cables", icon: "cable", image: img("photo-1606293459409-72e0e15c4ef9", 28) },
+  { name: "Ultra Compact", icon: "smartphone", image: img("photo-1592890288564-76628a30a657", 21) },
+  { name: "High Capacity", icon: "battery-charging", image: img("photo-1583394838336-acd977736f90", 22) },
+  { name: "MagSafe & Wireless", icon: "zap", image: img("photo-1609592424083-d5d14dfc949a", 23) },
+  { name: "Laptop Power Banks", icon: "zap", image: img("photo-1609091839311-d5365f9ff1c5", 24) },
+  { name: "Rugged & Solar", icon: "cable", image: img("photo-1622445262465-2481c4574875", 25) },
 ];

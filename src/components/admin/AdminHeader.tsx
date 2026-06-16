@@ -13,6 +13,7 @@ import {
   CheckCircle,
   AlertTriangle,
   X,
+  Menu,
 } from 'lucide-react';
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
@@ -20,6 +21,7 @@ import {
 interface AdminHeaderProps {
   title: string;
   subtitle?: string;
+  onMenuToggle?: () => void;
 }
 
 interface Notification {
@@ -93,7 +95,7 @@ const avatarMenuItems = [
 
 // ─── COMPONENT ───────────────────────────────────────────────────────────────
 
-export default function AdminHeader({ title, subtitle }: AdminHeaderProps) {
+export default function AdminHeader({ title, subtitle, onMenuToggle }: AdminHeaderProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAvatar, setShowAvatar] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
@@ -129,12 +131,23 @@ export default function AdminHeader({ title, subtitle }: AdminHeaderProps) {
 
   return (
     <header
-      className="flex items-center h-16 px-6 shrink-0 gap-4 z-30"
+      className="flex items-center h-16 px-4 md:px-6 shrink-0 gap-4 z-30"
       style={{
         backgroundColor: '#ffffff',
         borderBottom: '1px solid #E2E8F0',
       }}
     >
+      {/* Mobile Menu Toggle Button */}
+      {onMenuToggle && (
+        <button
+          onClick={onMenuToggle}
+          className="lg:hidden flex items-center justify-center w-10 h-10 rounded-xl mr-1 text-slate-500 hover:bg-slate-100 transition-colors shrink-0"
+          aria-label="Toggle Menu"
+        >
+          <Menu size={20} />
+        </button>
+      )}
+
       {/* ── Left: Title + breadcrumb ── */}
       <div className="min-w-0 mr-4">
         <h1 className="text-lg font-bold text-slate-800 leading-tight truncate">
@@ -255,7 +268,7 @@ export default function AdminHeader({ title, subtitle }: AdminHeaderProps) {
                 </div>
 
                 {/* List */}
-                <div className="divide-y" style={{ divideColor: '#F8FAFC', maxHeight: '340px', overflowY: 'auto' }}>
+                <div className="divide-y divide-slate-100" style={{ maxHeight: '340px', overflowY: 'auto' }}>
                   {notifList.length === 0 ? (
                     <div className="py-10 text-center">
                       <Bell size={28} className="mx-auto mb-2 text-slate-300" />

@@ -1,52 +1,132 @@
-import { Facebook, Instagram, Twitter, Youtube, MapPin, Phone, Mail } from "lucide-react";
+import { Facebook, Instagram, Twitter, Youtube, MapPin, Phone, Mail, MessageCircle } from "lucide-react";
 import logoImg from "@/assets/erha-logo.png";
+import { Link } from "@tanstack/react-router";
 
-const cols = [
-  { title: "Quick Links", items: ["Home", "Shop", "Deals"] },
-  { title: "Categories", items: ["Earbuds", "Smart Watches", "Power Banks", "Speakers", "Chargers", "Gaming"] },
-  { title: "Policies", items: ["Privacy Policy", "Terms of Service", "Return Policy", "Shipping Info", "Warranty", "FAQs"] },
+const quickLinks: Record<string, { to: string; search?: any }> = {
+  Home: { to: "/" },
+  Shop: { to: "/shop" },
+  Deals: { to: "/shop", search: { category: "Ultra Compact" } },
+  "About Us": { to: "/#whychoose" },
+  Contact: { to: "/#footer" },
+};
+
+const categoryLinks = [
+  "Ultra Compact",
+  "High Capacity",
+  "MagSafe & Wireless",
+  "Laptop Power Banks",
+  "Rugged & Solar"
+];
+
+const policyLinks = [
+  "Privacy Policy",
+  "Terms of Service",
+  "Return Policy",
+  "Shipping Info",
+  "Warranty",
+  "FAQs"
 ];
 
 export function Footer() {
   return (
-    <footer className="bg-secondary text-white/70">
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-5">
-        <div className="lg:col-span-2">
-          <div className="inline-flex items-center rounded-xl bg-white p-2">
-            <img src={logoImg} alt="ERHA Trade Link" className="h-10 w-auto" />
-          </div>
-          <p className="mt-5 max-w-sm text-sm leading-relaxed">
-            ERHA Trade Link is Pakistan's premium destination for wireless audio, smart wearables, gaming gear and everyday tech essentials.
-          </p>
-          <div className="mt-5 space-y-2 text-sm">
-            <div className="flex items-center gap-2"><MapPin className="size-4 text-cyan" /> Karachi, Pakistan</div>
-            <div className="flex items-center gap-2"><Phone className="size-4 text-cyan" /> +92 300 1234567</div>
-            <div className="flex items-center gap-2"><Mail className="size-4 text-cyan" /> hello@erhatradelink.com</div>
-          </div>
-          <div className="mt-5 flex gap-3">
-            {[Facebook, Instagram, Twitter, Youtube].map((I, k) => (
-              <a key={k} href="#" className="grid size-9 place-items-center rounded-full border border-white/15 transition hover:bg-cyan hover:text-secondary">
-                <I className="size-4" />
+    <footer id="footer" className="bg-secondary text-white/70">
+      {/* Main footer grid */}
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-12 sm:py-16">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
+          {/* Brand column */}
+          <div className="sm:col-span-2 lg:col-span-2">
+            <div className="inline-flex items-center rounded-xl bg-white p-2">
+              <img src={logoImg} alt="ERHA Trade Link" className="h-9 w-auto sm:h-10" />
+            </div>
+            <p className="mt-4 max-w-sm text-sm leading-relaxed">
+              ERHA Trade Link International — Pakistan's trusted destination for premium power banks, from ultra-compact everyday chargers to heavy-duty solar power stations.
+            </p>
+            {/* Contact Info */}
+            <div className="mt-5 space-y-2.5 text-sm">
+              <a
+                href="https://maps.google.com/?q=Pace+N+Pace+Mall+Chungi+6+Multan"
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-start gap-2 hover:text-white transition-colors group"
+              >
+                <MapPin className="size-4 text-cyan shrink-0 mt-0.5" />
+                <span>Pace N Pace Mall Near Chaseup, Chungi #6, Multan, Pakistan</span>
               </a>
-            ))}
+              <a href="tel:03023333499" className="flex items-center gap-2 hover:text-white transition-colors">
+                <Phone className="size-4 text-cyan shrink-0" />
+                <span>0302-3333499</span>
+              </a>
+              <a href="mailto:erhatradelinkinternational@gmail.com" className="flex items-center gap-2 hover:text-white transition-colors break-all sm:break-normal">
+                <Mail className="size-4 text-cyan shrink-0" />
+                <span className="text-xs sm:text-sm">erhatradelinkinternational@gmail.com</span>
+              </a>
+            </div>
+            {/* WhatsApp + Social */}
+            <div className="mt-5 flex flex-wrap gap-3">
+              <a
+                href="https://wa.me/923023333499"
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-2 rounded-full bg-[#25D366] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#1ebe57]"
+              >
+                <MessageCircle className="size-4" /> WhatsApp
+              </a>
+              {[Facebook, Instagram, Twitter, Youtube].map((I, k) => (
+                <a key={k} href="#" className="grid size-9 place-items-center rounded-full border border-white/15 transition hover:bg-cyan hover:text-secondary">
+                  <I className="size-4" />
+                </a>
+              ))}
+            </div>
           </div>
-        </div>
 
-        {cols.map((c) => (
-          <div key={c.title}>
-            <h4 className="font-display text-sm font-semibold uppercase tracking-wider text-white">{c.title}</h4>
+          {/* Quick Links Column */}
+          <div>
+            <h4 className="font-display text-sm font-semibold uppercase tracking-wider text-white">Quick Links</h4>
             <ul className="mt-4 space-y-2.5 text-sm">
-              {c.items.map((i) => (
-                <li key={i}><a href="#" className="transition hover:text-cyan">{i}</a></li>
+              {Object.entries(quickLinks).map(([name, link]) => (
+                <li key={name}>
+                  <Link to={link.to} search={link.search} className="transition hover:text-cyan cursor-pointer">
+                    {name}
+                  </Link>
+                </li>
               ))}
             </ul>
           </div>
-        ))}
+
+          {/* Categories Column */}
+          <div>
+            <h4 className="font-display text-sm font-semibold uppercase tracking-wider text-white">Categories</h4>
+            <ul className="mt-4 space-y-2.5 text-sm">
+              {categoryLinks.map((name) => (
+                <li key={name}>
+                  <Link to="/shop" search={{ category: name }} className="transition hover:text-cyan cursor-pointer">
+                    {name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Policies Column */}
+          <div>
+            <h4 className="font-display text-sm font-semibold uppercase tracking-wider text-white">Policies</h4>
+            <ul className="mt-4 space-y-2.5 text-sm">
+              {policyLinks.map((name) => (
+                <li key={name}>
+                  <Link to="/" className="transition hover:text-cyan cursor-pointer">
+                    {name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
       </div>
 
+      {/* Bottom bar */}
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-5 text-xs sm:px-6">
-          <div>© {new Date().getFullYear()} ERHA Trade Link. All rights reserved.</div>
+          <div>© {new Date().getFullYear()} ERHA Trade Link International. All rights reserved.</div>
           <div className="flex items-center gap-2.5 flex-wrap">
             {/* Visa */}
             <div className="flex items-center justify-center px-3 py-1.5 rounded-lg bg-white/10 backdrop-blur-sm border border-white/15 shadow-sm">
@@ -55,7 +135,6 @@ export function Footer() {
                 <path d="M4.095 3.39H0.06L0 3.69C3.12 4.485 5.22 6.63 6.075 8.94L5.13 4.425C4.98 3.735 4.575 3.42 4.095 3.39Z" fill="#F7B600"/>
               </svg>
             </div>
-
             {/* Mastercard */}
             <div className="flex items-center justify-center px-3 py-1.5 rounded-lg bg-white/10 backdrop-blur-sm border border-white/15 shadow-sm">
               <svg className="h-5 w-auto" viewBox="0 0 30 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -63,7 +142,6 @@ export function Footer() {
                 <circle cx="20" cy="10" r="10" fill="#F79E1B" fillOpacity="0.85"/>
               </svg>
             </div>
-
             {/* JazzCash */}
             <div className="flex items-center justify-center px-2 py-1 rounded-lg bg-white/10 backdrop-blur-sm border border-white/15 shadow-sm">
               <svg className="h-6 w-auto rounded" viewBox="0 0 65 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -74,7 +152,6 @@ export function Footer() {
                 <text x="44" y="13.5" fill="#FFC700" fontFamily="Arial, sans-serif" fontSize="8" fontWeight="900" letterSpacing="0.2">Cash</text>
               </svg>
             </div>
-
             {/* EasyPaisa */}
             <div className="flex items-center justify-center px-2 py-1 rounded-lg bg-white/10 backdrop-blur-sm border border-white/15 shadow-sm">
               <svg className="h-6 w-auto rounded" viewBox="0 0 65 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -85,7 +162,6 @@ export function Footer() {
                 <text x="41" y="13.5" fill="#4B4B4B" fontFamily="Arial, sans-serif" fontSize="8" fontWeight="900" letterSpacing="0.1">paisa</text>
               </svg>
             </div>
-
             {/* COD */}
             <div className="flex items-center justify-center px-2 py-1 rounded-lg bg-white/10 backdrop-blur-sm border border-white/15 shadow-sm">
               <svg className="h-6 w-auto rounded" viewBox="0 0 52 20" fill="none" xmlns="http://www.w3.org/2000/svg">

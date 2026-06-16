@@ -77,16 +77,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "ERHA Trade Link — Premium Electronics & Gadgets Store" },
-      { name: "description", content: "Shop wireless earbuds, smart watches, power banks, speakers and premium tech accessories at ERHA Trade Link." },
+      { title: "ERHA Trade Link — Premium Power Banks & Portable Charging" },
+      { name: "description", content: "Shop premium MagSafe wireless chargers, high capacity battery packs, laptop power banks, and solar charging devices at ERHA Trade Link." },
       { name: "author", content: "ERHA Trade Link" },
-      { property: "og:title", content: "ERHA Trade Link — Premium Electronics & Gadgets Store" },
-      { property: "og:description", content: "Shop wireless earbuds, smart watches, power banks, speakers and premium tech accessories at ERHA Trade Link." },
+      { property: "og:title", content: "ERHA Trade Link — Premium Power Banks" },
+      { property: "og:description", content: "Shop premium MagSafe wireless chargers, high capacity battery packs, laptop power banks, and solar charging devices at ERHA Trade Link." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "ERHA Trade Link — Premium Electronics & Gadgets Store" },
-      { name: "twitter:description", content: "Shop wireless earbuds, smart watches, power banks, speakers and premium tech accessories at ERHA Trade Link." },
+      { name: "twitter:title", content: "ERHA Trade Link — Premium Power Banks" },
+      { name: "twitter:description", content: "Shop premium MagSafe wireless chargers, high capacity battery packs, laptop power banks, and solar charging devices at ERHA Trade Link." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4a68f1e2-c611-42ca-bdee-f7ebd1c6dfb8/id-preview-41220d92--5856d7de-cfc0-463b-a467-12f3142e87b3.lovable.app-1780904646412.png" },
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4a68f1e2-c611-42ca-bdee-f7ebd1c6dfb8/id-preview-41220d92--5856d7de-cfc0-463b-a467-12f3142e87b3.lovable.app-1780904646412.png" },
     ],
@@ -123,6 +123,9 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+import { CartDrawer } from "@/components/site/CartDrawer";
+import { Toaster } from "sonner";
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
@@ -130,6 +133,8 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
+      <CartDrawer />
+      <Toaster position="bottom-right" richColors />
     </QueryClientProvider>
   );
 }
