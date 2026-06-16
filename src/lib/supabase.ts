@@ -243,8 +243,25 @@ export const db = {
     const orders = db.getOrders();
     const idx = orders.findIndex((x) => x.id === id);
     if (idx >= 0) {
-      orders[idx].paymentStatus = payStatus;
+      const order = orders[idx];
+      order.paymentStatus = payStatus;
       setStorage(KEYS.ORDERS, orders);
+
+      // Sync with payments list
+      const payments = db.getPayments();
+      const pIdx = payments.findIndex((p) => p.orderId === id);
+      if (pIdx >= 0) {
+        payments[pIdx].status = payStatus;
+        setStorage(KEYS.PAYMENTS, payments);
+      } else if (payStatus === 'Paid') {
+        db.createPayment({
+          orderId: id,
+          method: order.paymentMethod || 'COD',
+          amount: order.total || 0,
+          status: 'Paid',
+          reference: `TXN-${Math.floor(1000000 + Math.random() * 9000000)}`
+        });
+      }
     }
   },
 

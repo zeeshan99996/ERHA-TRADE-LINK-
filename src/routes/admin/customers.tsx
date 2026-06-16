@@ -318,7 +318,7 @@ function CustomersPage() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="space-y-6">
       <CustomerSlideOver 
         customer={selectedCustomer} 
         onClose={() => setSelectedCustomer(null)} 
@@ -329,14 +329,8 @@ function CustomersPage() {
         }}
       />
 
-      {/* Page Header */}
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Customers</h1>
-        <p className="text-gray-500 mt-1">Manage and view all your customer accounts</p>
-      </motion.div>
-
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Total Customers" value={totalCustomers} icon={Users} color="bg-indigo-500" delay={0.05} />
         <StatCard label="Active" value={activeCount} icon={UserCheck} color="bg-emerald-500" delay={0.1} />
         <StatCard label="Inactive" value={inactiveCount} icon={UserX} color="bg-gray-400" delay={0.15} />
@@ -348,7 +342,7 @@ function CustomersPage() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.25 }}
-        className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-wrap gap-3 items-center"
+        className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex flex-wrap gap-3 items-center"
       >
         {/* Search */}
         <div className="relative flex-1 min-w-48">
@@ -406,17 +400,17 @@ function CustomersPage() {
         className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
       >
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
-                {['Customer', 'Contact', 'City', 'Orders', 'Total Spent', 'Joined', 'Status', ''].map((h) => (
-                  <th
-                    key={h}
-                    className="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap"
-                  >
-                    {h}
-                  </th>
-                ))}
+                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">Customer</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap hidden md:table-cell">Contact</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap hidden sm:table-cell">City</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap hidden sm:table-cell">Orders</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">Total Spent</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap hidden lg:table-cell">Joined</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">Status</th>
+                <th className="text-right px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -445,13 +439,13 @@ function CustomersPage() {
                   </td>
 
                   {/* Contact */}
-                  <td className="px-5 py-4">
+                  <td className="px-5 py-4 hidden md:table-cell">
                     <p className="text-sm text-gray-700">{c.email}</p>
                     <p className="text-xs text-gray-400">{c.phone}</p>
                   </td>
 
                   {/* City */}
-                  <td className="px-5 py-4">
+                  <td className="px-5 py-4 hidden sm:table-cell">
                     <span className="flex items-center gap-1 text-sm text-gray-600">
                       <MapPin className="w-3.5 h-3.5 text-gray-400" />
                       {c.city}
@@ -459,7 +453,7 @@ function CustomersPage() {
                   </td>
 
                   {/* Orders */}
-                  <td className="px-5 py-4 text-center">
+                  <td className="px-5 py-4 hidden sm:table-cell">
                     <span className="text-sm font-semibold text-gray-800">{c.totalOrders}</span>
                   </td>
 
@@ -469,7 +463,7 @@ function CustomersPage() {
                   </td>
 
                   {/* Joined */}
-                  <td className="px-5 py-4">
+                  <td className="px-5 py-4 hidden lg:table-cell">
                     <span className="text-sm text-gray-500">{fmtDate(c.created_at ?? c.joinDate ?? new Date().toISOString())}</span>
                   </td>
 
@@ -479,10 +473,10 @@ function CustomersPage() {
                   </td>
 
                   {/* Actions */}
-                  <td className="px-5 py-4">
+                  <td className="px-5 py-4 text-right">
                     <button
                       onClick={() => setSelectedCustomer(c)}
-                      className="flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 opacity-0 group-hover:opacity-100 transition-all bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg"
+                      className="flex items-center gap-1.5 ml-auto text-xs font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-all"
                     >
                       <Eye className="w-3.5 h-3.5" />
                       View

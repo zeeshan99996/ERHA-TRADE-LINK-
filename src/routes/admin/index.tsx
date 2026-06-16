@@ -372,8 +372,8 @@ function DashboardPage() {
             <h2 className="text-base font-bold text-slate-800">Sales by Category</h2>
             <p className="text-sm text-slate-500 mt-0.5">Revenue distribution</p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex-1">
+          <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-2">
+            <div className="w-full sm:flex-1">
               <ResponsiveContainer width="100%" height={160}>
                 <PieChart>
                   <Pie
@@ -393,7 +393,7 @@ function DashboardPage() {
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="flex flex-col gap-2 flex-shrink-0">
+            <div className="flex flex-col gap-2 flex-shrink-0 w-full sm:w-auto">
               {categoryData.map((cat) => (
                 <div key={cat.name} className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
