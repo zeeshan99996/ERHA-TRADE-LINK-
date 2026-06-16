@@ -1,26 +1,3 @@
 {
-  "redirects": [
-    {
-      "source": "/:path*",
-      "has": [
-        {
-          "type": "host",
-          "value": "www.erhatradelinkinternational.com"
-        }
-      ],
-      "destination": "https://erhatradelinkinternational.com/:path*",
-      "permanent": true
-    },
-    {
-      "source": "/:path*",
-      "has": [
-        {
-          "type": "host",
-          "value": "erha-trade-link.vercel.app"
-        }
-      ],
-      "destination": "https://erhatradelinkinternational.com/:path*",
-      "permanent": true
-    }
-  ]
+  "redirects": []
 }
