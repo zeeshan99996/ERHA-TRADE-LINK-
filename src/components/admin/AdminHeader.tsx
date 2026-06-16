@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Link, useNavigate } from '@tanstack/react-router';
+import { toast } from 'sonner';
 import {
   Bell,
   Search,
@@ -88,14 +90,15 @@ const notificationIcon = (type: Notification['type']) => {
 };
 
 const avatarMenuItems = [
-  { icon: User, label: 'My Profile', description: 'View admin profile' },
-  { icon: Package, label: 'Inventory', description: 'Manage stock levels' },
-  { icon: Settings, label: 'Settings', description: 'System preferences' },
+  { icon: User, label: 'My Profile', description: 'View admin profile', to: '/admin/settings' },
+  { icon: Package, label: 'Inventory', description: 'Manage stock levels', to: '/admin/products' },
+  { icon: Settings, label: 'Settings', description: 'System preferences', to: '/admin/settings' },
 ];
 
 // ─── COMPONENT ───────────────────────────────────────────────────────────────
 
 export default function AdminHeader({ title, subtitle, onMenuToggle }: AdminHeaderProps) {
+  const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAvatar, setShowAvatar] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
@@ -420,10 +423,12 @@ export default function AdminHeader({ title, subtitle, onMenuToggle }: AdminHead
 
                 {/* Menu items */}
                 <div className="py-1.5">
-                  {avatarMenuItems.map(({ icon: Icon, label, description }) => (
-                    <button
+                  {avatarMenuItems.map(({ icon: Icon, label, description, to }) => (
+                    <Link
                       key={label}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors group"
+                      to={to}
+                      onClick={() => setShowAvatar(false)}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors group cursor-pointer"
                       onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F8FAFC')}
                       onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                     >
@@ -437,14 +442,19 @@ export default function AdminHeader({ title, subtitle, onMenuToggle }: AdminHead
                         <p className="text-sm font-medium text-slate-700">{label}</p>
                         <p className="text-xs text-slate-400">{description}</p>
                       </div>
-                    </button>
+                    </Link>
                   ))}
                 </div>
 
                 {/* Sign out */}
                 <div className="px-3 py-2.5" style={{ borderTop: '1px solid #F1F5F9' }}>
                   <button
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors group"
+                    onClick={() => {
+                      setShowAvatar(false);
+                      toast.success('Successfully signed out of Admin Panel');
+                      navigate({ to: '/' });
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors group cursor-pointer"
                     style={{ color: '#ef4444' }}
                     onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.06)')}
                     onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
