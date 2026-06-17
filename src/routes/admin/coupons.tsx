@@ -61,15 +61,23 @@ export function CouponsPage() {
       status: form.status,
     };
 
-    await db.saveCoupon(payload);
-    toast.success(editCoupon ? 'Coupon updated!' : 'Coupon created!');
-    setIsModalOpen(false);
-    await syncCoupons();
+    try {
+      await db.saveCoupon(payload);
+      toast.success(editCoupon ? 'Coupon updated!' : 'Coupon created!');
+      setIsModalOpen(false);
+      await syncCoupons();
+    } catch (err: any) {
+      toast.error('Failed to save coupon: ' + (err?.message || 'Unknown error'));
+    }
   };
 
   const handleDelete = async (id: string) => {
-    await db.deleteCoupon(id);
-    toast.success('Coupon deleted');
+    try {
+      await db.deleteCoupon(id);
+      toast.success('Coupon deleted');
+    } catch (err: any) {
+      toast.error('Failed to delete coupon: ' + (err?.message || 'Unknown error'));
+    }
     setDeleteId(null);
     await syncCoupons();
   };

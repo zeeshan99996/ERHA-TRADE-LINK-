@@ -146,8 +146,11 @@ export const db = {
   saveProduct: async (p: any): Promise<void> => {
     if (isSupabaseConfigured && supabase) {
       const { error } = await supabase.from('products').upsert(rowToLower(p));
-      if (!error) return;
-      console.error('Supabase saveProduct error:', error);
+      if (error) {
+        console.error('Supabase saveProduct error:', error);
+        throw new Error(error.message);
+      }
+      return;
     }
     const products = getStorage(KEYS.PRODUCTS, initialProducts);
     const idx = products.findIndex((x) => x.id === p.id);
@@ -161,8 +164,11 @@ export const db = {
   deleteProduct: async (id: string): Promise<void> => {
     if (isSupabaseConfigured && supabase) {
       const { error } = await supabase.from('products').delete().eq('id', id);
-      if (!error) return;
-      console.error('Supabase deleteProduct error:', error);
+      if (error) {
+        console.error('Supabase deleteProduct error:', error);
+        throw new Error(error.message);
+      }
+      return;
     }
     const products = getStorage(KEYS.PRODUCTS, initialProducts);
     const updated = products.filter((x) => x.id !== id);
@@ -181,8 +187,11 @@ export const db = {
   saveCategory: async (c: any): Promise<void> => {
     if (isSupabaseConfigured && supabase) {
       const { error } = await supabase.from('categories').upsert(rowToLower(c));
-      if (!error) return;
-      console.error('Supabase saveCategory error:', error);
+      if (error) {
+        console.error('Supabase saveCategory error:', error);
+        throw new Error(error.message);
+      }
+      return;
     }
     const cats = getStorage(KEYS.CATEGORIES, initialCategories);
     const idx = cats.findIndex((x) => x.id === c.id);
@@ -196,8 +205,11 @@ export const db = {
   deleteCategory: async (id: string): Promise<void> => {
     if (isSupabaseConfigured && supabase) {
       const { error } = await supabase.from('categories').delete().eq('id', id);
-      if (!error) return;
-      console.error('Supabase deleteCategory error:', error);
+      if (error) {
+        console.error('Supabase deleteCategory error:', error);
+        throw new Error(error.message);
+      }
+      return;
     }
     const cats = getStorage(KEYS.CATEGORIES, initialCategories);
     const updated = cats.filter((x) => x.id !== id);
@@ -492,8 +504,11 @@ export const db = {
   saveCustomer: async (c: any): Promise<void> => {
     if (isSupabaseConfigured && supabase) {
       const { error } = await supabase.from('customers').upsert(rowToLower(c));
-      if (!error) return;
-      console.error('Supabase saveCustomer error:', error);
+      if (error) {
+        console.error('Supabase saveCustomer error:', error);
+        throw new Error(error.message);
+      }
+      return;
     }
     const custs = getStorage(KEYS.CUSTOMERS, initialCustomers);
     const idx = custs.findIndex((x) => x.id === c.id);
@@ -517,8 +532,11 @@ export const db = {
   saveCoupon: async (c: any): Promise<void> => {
     if (isSupabaseConfigured && supabase) {
       const { error } = await supabase.from('coupons').upsert(rowToLower(c));
-      if (!error) return;
-      console.error('Supabase saveCoupon error:', error);
+      if (error) {
+        console.error('Supabase saveCoupon error:', error);
+        throw new Error(error.message);
+      }
+      return;
     }
     const coupons = getStorage(KEYS.COUPONS, initialCoupons);
     const idx = coupons.findIndex((x) => x.id === c.id);
@@ -532,8 +550,11 @@ export const db = {
   deleteCoupon: async (id: string): Promise<void> => {
     if (isSupabaseConfigured && supabase) {
       const { error } = await supabase.from('coupons').delete().eq('id', id);
-      if (!error) return;
-      console.error('Supabase deleteCoupon error:', error);
+      if (error) {
+        console.error('Supabase deleteCoupon error:', error);
+        throw new Error(error.message);
+      }
+      return;
     }
     const coupons = getStorage(KEYS.COUPONS, initialCoupons);
     const updated = coupons.filter((x) => x.id !== id);

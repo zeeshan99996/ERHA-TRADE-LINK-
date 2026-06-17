@@ -32,11 +32,11 @@ create table if not exists public.products (
     name text not null,
     category text,
     price numeric(12,2) default 0.00 not null,
-    salePrice numeric(12,2),
+    saleprice numeric(12,2),
     stock integer default 0 not null,
-    minStock integer default 10 not null,
+    minstock integer default 10 not null,
     status text default 'Active'::text not null,
-    shortDescription text,
+    shortdescription text,
     image text,
     brand text default 'ERHA'::text,
     sku text,
@@ -45,9 +45,15 @@ create table if not exists public.products (
     badge text,
     features jsonb default '[]'::jsonb,
     specifications jsonb default '{}'::jsonb,
-    costPrice numeric(12,2) default 0.00,
+    costprice numeric(12,2) default 0.00,
     created_at timestamptz default timezone('utc'::text, now()) not null
 );
+
+-- Run this to fix existing table if columns were created with camelCase:
+-- alter table public.products rename column if exists "salePrice" to saleprice;
+-- alter table public.products rename column if exists "minStock" to minstock;
+-- alter table public.products rename column if exists "shortDescription" to shortdescription;
+-- alter table public.products rename column if exists "costPrice" to costprice;
 
 -- Enable RLS for products
 alter table public.products enable row level security;
@@ -60,13 +66,17 @@ create table if not exists public.categories (
     id text primary key,
     name text not null,
     slug text not null,
-    parentId text,
-    imageUrl text,
+    parentid text,
+    imageurl text,
     created_at timestamptz default timezone('utc'::text, now()) not null
 );
 
+-- Run to fix existing table if columns were created with camelCase:
+-- alter table public.categories rename column if exists "parentId" to parentid;
+-- alter table public.categories rename column if exists "imageUrl" to imageurl;
+
 -- Seed default categories
-insert into public.categories (id, name, slug, parentId, imageUrl)
+insert into public.categories (id, name, slug, parentid, imageurl)
 values 
   ('cat1', 'Ultra Compact', 'ultra-compact', null, 'https://images.unsplash.com/photo-1592890288564-76628a30a657?w=400'),
   ('cat2', 'High Capacity', 'high-capacity', null, 'https://images.unsplash.com/photo-1583394838336-acd977736f90?w=400'),
@@ -89,16 +99,24 @@ create table if not exists public.orders (
     phone text not null,
     items text[] not null,
     total numeric(12,2) not null,
-    paymentStatus text not null,
-    orderStatus text not null,
+    paymentstatus text not null,
+    orderstatus text not null,
     date text not null,
     address text not null,
-    paymentMethod text not null,
-    discountAmount numeric(12,2) default 0.00,
-    shippingRate numeric(12,2) default 0.00,
-    trackingNumber text,
+    paymentmethod text not null,
+    discountamount numeric(12,2) default 0.00,
+    shippingrate numeric(12,2) default 0.00,
+    trackingnumber text,
     created_at timestamptz default timezone('utc'::text, now()) not null
 );
+
+-- Run to fix existing table if columns were created with camelCase:
+-- alter table public.orders rename column if exists "paymentStatus" to paymentstatus;
+-- alter table public.orders rename column if exists "orderStatus" to orderstatus;
+-- alter table public.orders rename column if exists "paymentMethod" to paymentmethod;
+-- alter table public.orders rename column if exists "discountAmount" to discountamount;
+-- alter table public.orders rename column if exists "shippingRate" to shippingrate;
+-- alter table public.orders rename column if exists "trackingNumber" to trackingnumber;
 
 -- Enable RLS for orders
 alter table public.orders enable row level security;
@@ -114,12 +132,16 @@ create table if not exists public.customers (
     phone text,
     address text,
     city text,
-    totalOrders integer default 0 not null,
-    totalSpend numeric(12,2) default 0.00 not null,
+    totalorders integer default 0 not null,
+    totalspend numeric(12,2) default 0.00 not null,
     notes text,
     status text default 'Active'::text not null,
     created_at timestamptz default timezone('utc'::text, now()) not null
 );
+
+-- Run to fix existing table if columns were created with camelCase:
+-- alter table public.customers rename column if exists "totalOrders" to totalorders;
+-- alter table public.customers rename column if exists "totalSpend" to totalspend;
 
 -- Enable RLS for customers
 alter table public.customers enable row level security;
@@ -131,15 +153,22 @@ create policy "Allow write access to customers" on public.customers for all usin
 create table if not exists public.coupons (
     id text primary key,
     code text unique not null,
-    discountType text not null,
-    discountValue numeric(12,2) not null,
-    minOrder numeric(12,2) default 0.00 not null,
+    discounttype text not null,
+    discountvalue numeric(12,2) not null,
+    minorder numeric(12,2) default 0.00 not null,
     expiry text not null,
-    maxUsage integer,
-    usageCount integer default 0 not null,
+    maxusage integer,
+    usagecount integer default 0 not null,
     status text default 'Active'::text not null,
     created_at timestamptz default timezone('utc'::text, now()) not null
 );
+
+-- Run to fix existing table if columns were created with camelCase:
+-- alter table public.coupons rename column if exists "discountType" to discounttype;
+-- alter table public.coupons rename column if exists "discountValue" to discountvalue;
+-- alter table public.coupons rename column if exists "minOrder" to minorder;
+-- alter table public.coupons rename column if exists "maxUsage" to maxusage;
+-- alter table public.coupons rename column if exists "usageCount" to usagecount;
 
 -- Enable RLS for coupons
 alter table public.coupons enable row level security;
@@ -166,7 +195,7 @@ create policy "Allow write access to expenses" on public.expenses for all using 
 -- 8. Payments Table
 create table if not exists public.payments (
     id text primary key,
-    orderId text not null,
+    orderid text not null,
     method text not null,
     amount numeric(12,2) not null,
     status text not null,
@@ -174,6 +203,9 @@ create table if not exists public.payments (
     date text not null,
     created_at timestamptz default timezone('utc'::text, now()) not null
 );
+
+-- Run to fix existing table if columns were created with camelCase:
+-- alter table public.payments rename column if exists "orderId" to orderid;
 
 -- Enable RLS for payments
 alter table public.payments enable row level security;

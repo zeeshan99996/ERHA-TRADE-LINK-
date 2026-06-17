@@ -80,10 +80,14 @@ export function ProductsPage() {
       costPrice: editProduct?.costPrice || 0,
     };
     if (!payload.name) return toast.error('Product name is required');
-    await db.saveProduct(payload);
-    toast.success(editProduct ? 'Product updated!' : 'Product added!');
-    setIsModalOpen(false);
-    await syncProducts();
+    try {
+      await db.saveProduct(payload);
+      toast.success(editProduct ? 'Product updated!' : 'Product added!');
+      setIsModalOpen(false);
+      await syncProducts();
+    } catch (err: any) {
+      toast.error('Failed to save product: ' + (err?.message || 'Unknown error'));
+    }
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -104,8 +108,12 @@ export function ProductsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    await db.deleteProduct(id);
-    toast.success('Product deleted');
+    try {
+      await db.deleteProduct(id);
+      toast.success('Product deleted');
+    } catch (err: any) {
+      toast.error('Failed to delete product: ' + (err?.message || 'Unknown error'));
+    }
     setDeleteId(null);
     await syncProducts();
   };

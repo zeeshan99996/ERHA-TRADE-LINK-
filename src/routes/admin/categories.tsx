@@ -51,15 +51,23 @@ export function CategoriesPage() {
       imageUrl: editCat?.imageUrl || 'https://images.unsplash.com/photo-1609091839311-d5365f9ff1c5?w=400',
       parentId: null,
     };
-    await db.saveCategory(payload);
-    toast.success(editCat ? 'Category updated!' : 'Category created!');
-    setIsModalOpen(false);
-    await syncCategories();
+    try {
+      await db.saveCategory(payload);
+      toast.success(editCat ? 'Category updated!' : 'Category created!');
+      setIsModalOpen(false);
+      await syncCategories();
+    } catch (err: any) {
+      toast.error('Failed to save category: ' + (err?.message || 'Unknown error'));
+    }
   };
 
   const handleDelete = async (id: string) => {
-    await db.deleteCategory(id);
-    toast.success('Category deleted');
+    try {
+      await db.deleteCategory(id);
+      toast.success('Category deleted');
+    } catch (err: any) {
+      toast.error('Failed to delete category: ' + (err?.message || 'Unknown error'));
+    }
     setDeleteId(null);
     await syncCategories();
   };
