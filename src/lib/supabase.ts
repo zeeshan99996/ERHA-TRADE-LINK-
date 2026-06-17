@@ -84,19 +84,68 @@ function setStorage<T>(key: string, val: T) {
   }
 }
 
+// ─── POSTGRES LOWERCASE FIELD MAPPER HELPERS ────────────────────────────────
+const LOWER_TO_CAMEL: Record<string, string> = {
+  saleprice: 'salePrice',
+  minstock: 'minStock',
+  shortdescription: 'shortDescription',
+  costprice: 'costPrice',
+  parentid: 'parentId',
+  imageurl: 'imageUrl',
+  paymentstatus: 'paymentStatus',
+  orderstatus: 'orderStatus',
+  paymentmethod: 'paymentMethod',
+  discountamount: 'discountAmount',
+  shippingrate: 'shippingRate',
+  trackingnumber: 'trackingNumber',
+  totalorders: 'totalOrders',
+  totalspend: 'totalSpend',
+  discounttype: 'discountType',
+  discountvalue: 'discountValue',
+  minorder: 'minOrder',
+  maxusage: 'maxUsage',
+  usagecount: 'usageCount',
+  orderid: 'orderId',
+};
+
+function rowToCamel(row: any): any {
+  if (!row || typeof row !== 'object' || Array.isArray(row)) return row;
+  const n: any = {};
+  for (const k of Object.keys(row)) {
+    const camelKey = LOWER_TO_CAMEL[k] || k;
+    n[camelKey] = row[k];
+  }
+  return n;
+}
+
+function rowsToCamel(rows: any[]): any[] {
+  if (!rows || !Array.isArray(rows)) return rows;
+  return rows.map(rowToCamel);
+}
+
+function rowToLower(row: any): any {
+  if (!row || typeof row !== 'object' || Array.isArray(row)) return row;
+  const n: any = {};
+  for (const k of Object.keys(row)) {
+    const lowerKey = k.toLowerCase();
+    n[lowerKey] = row[k];
+  }
+  return n;
+}
+
 export const db = {
   // PRODUCTS
   getProducts: async (): Promise<any[]> => {
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
-      if (!error && data) return data;
+      if (!error && data) return rowsToCamel(data);
       console.error('Supabase getProducts error:', error);
     }
     return getStorage(KEYS.PRODUCTS, initialProducts);
   },
   saveProduct: async (p: any): Promise<void> => {
     if (isSupabaseConfigured && supabase) {
-      const { error } = await supabase.from('products').upsert(p);
+      const { error } = await supabase.from('products').upsert(rowToLower(p));
       if (!error) return;
       console.error('Supabase saveProduct error:', error);
     }
@@ -124,14 +173,14 @@ export const db = {
   getCategories: async (): Promise<any[]> => {
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase.from('categories').select('*').order('created_at', { ascending: true });
-      if (!error && data) return data;
+      if (!error && data) return rowsToCamel(data);
       console.error('Supabase getCategories error:', error);
     }
     return getStorage(KEYS.CATEGORIES, initialCategories);
   },
   saveCategory: async (c: any): Promise<void> => {
     if (isSupabaseConfigured && supabase) {
-      const { error } = await supabase.from('categories').upsert(c);
+      const { error } = await supabase.from('categories').upsert(rowToLower(c));
       if (!error) return;
       console.error('Supabase saveCategory error:', error);
     }
@@ -159,7 +208,7 @@ export const db = {
   getOrders: async (): Promise<any[]> => {
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
-      if (!error && data) return data;
+      if (!error && data) return rowsToCamel(data);
       console.error('Supabase getOrders error:', error);
     }
     return getStorage(KEYS.ORDERS, initialOrders);
@@ -199,47 +248,49 @@ export const db = {
           shippingRate: orderData.shippingRate,
         };
 
-        const { error: orderErr } = await supabase.from('orders').insert(newOrder);
+        const { error: orderErr } = await supabase.from('orders').insert(rowToLower(newOrder));
         if (orderErr) throw orderErr;
 
         // Decrement stock in Supabase for each item
         for (const item of orderData.items) {
           const { data: p } = await supabase.from('products').select('*').or(`id.eq.${item.id},name.eq.${item.name}`).maybeSingle();
           if (p) {
-            const newStock = Math.max(0, p.stock - item.quantity);
-            let newStatus = p.status;
+            const camelP = rowToCamel(p);
+            const newStock = Math.max(0, camelP.stock - item.quantity);
+            let newStatus = camelP.status;
             if (newStock === 0) {
               newStatus = 'Out of Stock';
               await db.createNotification({
                 type: 'stock',
                 title: 'Out of Stock Alert',
-                description: `${p.name} is now completely out of stock!`
+                description: `${camelP.name} is now completely out of stock!`
               });
-            } else if (newStock < p.minStock) {
+            } else if (newStock < camelP.minStock) {
               await db.createNotification({
                 type: 'stock',
                 title: 'Low Stock Alert',
-                description: `${p.name} has only ${newStock} units remaining.`
+                description: `${camelP.name} has only ${newStock} units remaining.`
               });
             }
-            await supabase.from('products').update({ stock: newStock, status: newStatus }).eq('id', p.id);
+            await supabase.from('products').update(rowToLower({ stock: newStock, status: newStatus })).eq('id', camelP.id);
           }
         }
 
         // Register Customer spendings
         const { data: cust } = await supabase.from('customers').select('*').eq('email', orderData.email).maybeSingle();
         if (cust) {
-          await supabase.from('customers').update({
-            totalOrders: cust.totalOrders + 1,
-            totalSpend: cust.totalSpend + orderData.total,
+          const camelCust = rowToCamel(cust);
+          await supabase.from('customers').update(rowToLower({
+            totalOrders: camelCust.totalOrders + 1,
+            totalSpend: camelCust.totalSpend + orderData.total,
             phone: orderData.phone,
             address: orderData.address,
             city: orderData.city
-          }).eq('id', cust.id);
+          })).eq('id', camelCust.id);
         } else {
           const { count: custCount } = await supabase.from('customers').select('*', { count: 'exact', head: true });
           const custId = `CUST-${String((custCount || 0) + 1).padStart(3, '0')}`;
-          await supabase.from('customers').insert({
+          await supabase.from('customers').insert(rowToLower({
             id: custId,
             name: orderData.customerName,
             email: orderData.email,
@@ -250,7 +301,7 @@ export const db = {
             totalSpend: orderData.total,
             notes: orderData.notes || 'Added from web checkout',
             status: 'Active'
-          });
+          }));
         }
 
         // Create Payment if already Paid
@@ -367,7 +418,7 @@ export const db = {
   },
   updateOrderStatus: async (id: string, status: string): Promise<void> => {
     if (isSupabaseConfigured && supabase) {
-      const { error } = await supabase.from('orders').update({ orderStatus: status }).eq('id', id);
+      const { error } = await supabase.from('orders').update(rowToLower({ orderStatus: status })).eq('id', id);
       if (!error) return;
       console.error('Supabase updateOrderStatus error:', error);
     }
@@ -381,19 +432,20 @@ export const db = {
   updateOrderPaymentStatus: async (id: string, payStatus: string): Promise<void> => {
     if (isSupabaseConfigured && supabase) {
       try {
-        const { error } = await supabase.from('orders').update({ paymentStatus: payStatus }).eq('id', id);
+        const { error } = await supabase.from('orders').update(rowToLower({ paymentStatus: payStatus })).eq('id', id);
         if (error) throw error;
 
         const { data: order } = await supabase.from('orders').select('*').eq('id', id).maybeSingle();
         if (order) {
-          const { data: pmt } = await supabase.from('payments').select('*').eq('orderId', id).maybeSingle();
+          const camelOrder = rowToCamel(order);
+          const { data: pmt } = await supabase.from('payments').select('*').eq('orderid', id).maybeSingle();
           if (pmt) {
-            await supabase.from('payments').update({ status: payStatus }).eq('orderId', id);
+            await supabase.from('payments').update(rowToLower({ status: payStatus })).eq('orderid', id);
           } else if (payStatus === 'Paid') {
             await db.createPayment({
               orderId: id,
-              method: order.paymentMethod || 'COD',
-              amount: order.total || 0,
+              method: camelOrder.paymentMethod || 'COD',
+              amount: camelOrder.total || 0,
               status: 'Paid',
               reference: `TXN-${Math.floor(1000000 + Math.random() * 9000000)}`
             });
@@ -432,14 +484,14 @@ export const db = {
   getCustomers: async (): Promise<any[]> => {
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase.from('customers').select('*').order('created_at', { ascending: false });
-      if (!error && data) return data;
+      if (!error && data) return rowsToCamel(data);
       console.error('Supabase getCustomers error:', error);
     }
     return getStorage(KEYS.CUSTOMERS, initialCustomers);
   },
   saveCustomer: async (c: any): Promise<void> => {
     if (isSupabaseConfigured && supabase) {
-      const { error } = await supabase.from('customers').upsert(c);
+      const { error } = await supabase.from('customers').upsert(rowToLower(c));
       if (!error) return;
       console.error('Supabase saveCustomer error:', error);
     }
@@ -457,14 +509,14 @@ export const db = {
   getCoupons: async (): Promise<any[]> => {
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase.from('coupons').select('*').order('created_at', { ascending: false });
-      if (!error && data) return data;
+      if (!error && data) return rowsToCamel(data);
       console.error('Supabase getCoupons error:', error);
     }
     return getStorage(KEYS.COUPONS, initialCoupons);
   },
   saveCoupon: async (c: any): Promise<void> => {
     if (isSupabaseConfigured && supabase) {
-      const { error } = await supabase.from('coupons').upsert(c);
+      const { error } = await supabase.from('coupons').upsert(rowToLower(c));
       if (!error) return;
       console.error('Supabase saveCoupon error:', error);
     }
@@ -492,16 +544,17 @@ export const db = {
     if (isSupabaseConfigured && supabase) {
       const { data: c, error } = await supabase.from('coupons').select('*').eq('code', codeUpper).eq('status', 'Active').maybeSingle();
       if (!error && c) {
-        if (new Date(c.expiry) < new Date()) {
+        const camelC = rowToCamel(c);
+        if (new Date(camelC.expiry) < new Date()) {
           return { valid: false, message: 'This coupon has expired.' };
         }
-        if (orderAmount < c.minOrder) {
-          return { valid: false, message: `Minimum order amount of Rs. ${c.minOrder.toLocaleString()} required.` };
+        if (orderAmount < camelC.minOrder) {
+          return { valid: false, message: `Minimum order amount of Rs. ${camelC.minOrder.toLocaleString()} required.` };
         }
-        if (c.maxUsage && c.usageCount >= c.maxUsage) {
+        if (camelC.maxUsage && camelC.usageCount >= camelC.maxUsage) {
           return { valid: false, message: 'This coupon usage limit has been reached.' };
         }
-        return { valid: true, coupon: c };
+        return { valid: true, coupon: camelC };
       }
       return { valid: false, message: 'Invalid or inactive discount coupon code.' };
     }
@@ -524,7 +577,7 @@ export const db = {
   getExpenses: async (): Promise<any[]> => {
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase.from('expenses').select('*').order('created_at', { ascending: false });
-      if (!error && data) return data;
+      if (!error && data) return rowsToCamel(data);
       console.error('Supabase getExpenses error:', error);
     }
     return getStorage(KEYS.EXPENSES, initialExpenses);
@@ -535,7 +588,7 @@ export const db = {
         const { count } = await supabase.from('expenses').select('*', { count: 'exact', head: true });
         const id = `EXP-${String((count || 0) + 1).padStart(3, '0')}`;
         const newExp = { id, ...exp };
-        const { error } = await supabase.from('expenses').insert(newExp);
+        const { error } = await supabase.from('expenses').insert(rowToLower(newExp));
         if (!error) return newExp;
         console.error('Supabase createExpense error:', error);
       } catch (err) {
@@ -556,7 +609,7 @@ export const db = {
   getPayments: async (): Promise<any[]> => {
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase.from('payments').select('*').order('created_at', { ascending: false });
-      if (!error && data) return data;
+      if (!error && data) return rowsToCamel(data);
       console.error('Supabase getPayments error:', error);
     }
     return getStorage(KEYS.PAYMENTS, initialPayments);
@@ -571,7 +624,7 @@ export const db = {
           ...pmt,
           date: new Date().toISOString().split('T')[0]
         };
-        const { error } = await supabase.from('payments').insert(newPmt);
+        const { error } = await supabase.from('payments').insert(rowToLower(newPmt));
         if (!error) return newPmt;
         console.error('Supabase createPayment error:', error);
       } catch (err) {
@@ -593,7 +646,7 @@ export const db = {
   getNotifications: async (): Promise<any[]> => {
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(30);
-      if (!error && data) return data;
+      if (!error && data) return rowsToCamel(data);
       console.error('Supabase getNotifications error:', error);
     }
     return getStorage(KEYS.NOTIFICATIONS, initialNotifications);
@@ -606,7 +659,7 @@ export const db = {
         time: new Date().toISOString(),
         ...notif
       };
-      const { error } = await supabase.from('notifications').insert(newNotif);
+      const { error } = await supabase.from('notifications').insert(rowToLower(newNotif));
       if (!error) return newNotif;
       console.error('Supabase createNotification error:', error);
     }
@@ -657,7 +710,7 @@ export const db = {
         return { success: false, message: 'Database connection error.' };
       }
       if (data) {
-        return { success: true, user: data };
+        return { success: true, user: rowToCamel(data) };
       }
       return { success: false, message: 'Invalid email or password.' };
     }
