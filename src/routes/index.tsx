@@ -8,7 +8,8 @@ import { PromoBanner } from "@/components/site/PromoBanner";
 import { WhyChoose } from "@/components/site/WhyChoose";
 import { Newsletter } from "@/components/site/Newsletter";
 import { Footer } from "@/components/site/Footer";
-import { products } from "@/lib/products";
+import { useState, useEffect } from "react";
+import { db } from "@/lib/supabase";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -32,7 +33,19 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const featured = products.slice(0, 8);
+  const [featured, setFeatured] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadProducts = async () => {
+      const prods = await db.getProducts();
+      // Only display active products on the homepage grid
+      setFeatured(prods.filter((p) => p.status === "Active").slice(0, 8));
+    };
+    loadProducts();
+    window.addEventListener("storage", loadProducts);
+    return () => window.removeEventListener("storage", loadProducts);
+  }, []);
+
   return (
     <div className="min-h-screen bg-background">
       <Header />

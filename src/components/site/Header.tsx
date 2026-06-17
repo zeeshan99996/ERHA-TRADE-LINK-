@@ -2,7 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Search, Heart, ShoppingCart, Menu, Shield } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import logoImg from "@/assets/erha-logo.png";
-import { products } from "@/lib/products";
+import { db } from "@/lib/supabase";
 import { getCartCount } from "@/lib/cart";
 import { openCartDrawer } from "@/components/site/CartDrawer";
 
@@ -24,6 +24,7 @@ export function Header() {
   const mobileSearchRef = useRef<HTMLFormElement>(null);
   const [showMobileDropdown, setShowMobileDropdown] = useState(false);
   const [cartCount, setCartCount] = useState(0);
+  const [productsList, setProductsList] = useState<any[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -36,6 +37,19 @@ export function Header() {
     return () => {
       window.removeEventListener("erha_cart_update", handleUpdate);
       window.removeEventListener("storage", handleUpdate);
+    };
+  }, []);
+
+  // Fetch products list dynamically
+  useEffect(() => {
+    const loadProducts = async () => {
+      const prods = await db.getProducts();
+      setProductsList(prods);
+    };
+    loadProducts();
+    window.addEventListener("storage", loadProducts);
+    return () => {
+      window.removeEventListener("storage", loadProducts);
     };
   }, []);
 
@@ -65,7 +79,7 @@ export function Header() {
     };
   }, []);
 
-  const latestProducts = products.filter((p) => p.badge === "New").slice(0, 3);
+  const latestProducts = productsList.filter((p) => p.badge === "New" && p.status === "Active").slice(0, 3);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-xl">

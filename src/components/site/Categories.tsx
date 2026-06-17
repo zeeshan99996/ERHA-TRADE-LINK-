@@ -1,5 +1,6 @@
 import { motion } from "motion/react";
-import { categories } from "@/lib/products";
+import { useState, useEffect } from "react";
+import { db } from "@/lib/supabase";
 import { SectionHeading } from "./SectionHeading";
 import { Link } from "@tanstack/react-router";
 import {
@@ -25,6 +26,18 @@ const categoryMeta: Record<string, { color: string; desc: string }> = {
 };
 
 export function Categories() {
+  const [categoriesList, setCategoriesList] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadCats = async () => {
+      const cats = await db.getCategories();
+      setCategoriesList(cats);
+    };
+    loadCats();
+    window.addEventListener("storage", loadCats);
+    return () => window.removeEventListener("storage", loadCats);
+  }, []);
+
   return (
     <section id="categories" className="bg-background py-12 sm:py-16 lg:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
@@ -41,8 +54,8 @@ export function Categories() {
 
         {/* Cards grid — 1 col on mobile, 3 on sm, 5 on lg */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-          {categories.map((c, i) => {
-            const Icon = iconMap[c.icon] ?? BatteryCharging;
+          {categoriesList.map((c, i) => {
+            const Icon = iconMap[c.icon || "smartphone"] ?? BatteryCharging;
             const meta = categoryMeta[c.name] ?? { color: "from-indigo-500 to-violet-500", desc: "Power banks" };
             return (
               <motion.div
