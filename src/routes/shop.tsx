@@ -73,17 +73,22 @@ function ShopComponent() {
   // Filter & Sort Logic
   const filteredProducts = productsList
     .filter((p) => {
+      const pName = p.name || "";
+      const pCategory = p.category || "";
+      const pShortDescription = p.shortDescription || "";
+      const selCategory = selectedCategory || "All";
+
       const matchSearch =
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (p.shortDescription && p.shortDescription.toLowerCase().includes(searchQuery.toLowerCase()));
+        pName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        pCategory.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        pShortDescription.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchCategory =
-        selectedCategory === "All" ||
-        p.category.toLowerCase() === selectedCategory.toLowerCase() ||
+        selCategory === "All" ||
+        pCategory.toLowerCase() === selCategory.toLowerCase() ||
         // Handle slugs
-        (selectedCategory === "MagSafe & Wireless" && p.category === "MagSafe & Wireless") ||
-        (selectedCategory === "magsafe-wireless" && p.category === "MagSafe & Wireless");
+        (selCategory === "MagSafe & Wireless" && pCategory === "MagSafe & Wireless") ||
+        (selCategory === "magsafe-wireless" && pCategory === "MagSafe & Wireless");
 
       return matchSearch && matchCategory && p.status === "Active";
     })
@@ -115,7 +120,7 @@ function ShopComponent() {
     openCartDrawer();
   };
 
-  const allCategories = ["All", ...categoriesList.map((c) => c.name)];
+  const allCategories = ["All", ...categoriesList.map((c) => c?.name || "")];
 
   return (
     <div className="min-h-screen bg-background">
@@ -209,7 +214,7 @@ function ShopComponent() {
                 <h3 className="text-sm font-bold text-ink uppercase tracking-wider mb-4">Categories</h3>
                 <ul className="space-y-1.5">
                   {allCategories.map((cat) => {
-                    const isActive = selectedCategory.toLowerCase() === cat.toLowerCase();
+                    const isActive = (selectedCategory || "All").toLowerCase() === (cat || "").toLowerCase();
                     return (
                       <li key={cat}>
                         <button
@@ -497,7 +502,7 @@ function ShopComponent() {
                   <h3 className="text-xs font-bold text-ink uppercase tracking-wider mb-3">Categories</h3>
                   <ul className="space-y-1">
                     {allCategories.map((cat) => {
-                      const isActive = selectedCategory.toLowerCase() === cat.toLowerCase();
+                      const isActive = (selectedCategory || "All").toLowerCase() === (cat || "").toLowerCase();
                       return (
                         <li key={cat}>
                           <button
