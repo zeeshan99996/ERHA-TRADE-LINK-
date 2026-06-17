@@ -29,20 +29,24 @@ function ProductDetailComponent() {
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
 
   useEffect(() => {
-    const products = db.getProducts();
-    const found = products.find((p) => p.id === id);
-    
-    if (found) {
-      setProduct(found);
+    const loadProduct = async () => {
+      const products = await db.getProducts();
+      const found = products.find((p) => p.id === id);
       
-      // Load related products (same category, excluding current)
-      const related = products
-        .filter((p) => p.category === found.category && p.id !== found.id && p.status === "Active")
-        .slice(0, 4);
-      setRelatedProducts(related);
-    } else {
-      setProduct(null);
-    }
+      if (found) {
+        setProduct(found);
+        
+        // Load related products (same category, excluding current)
+        const related = products
+          .filter((p) => p.category === found.category && p.id !== found.id && p.status === "Active")
+          .slice(0, 4);
+        setRelatedProducts(related);
+      } else {
+        setProduct(null);
+      }
+    };
+
+    loadProduct();
     
     // Reset quantity on product change
     setQuantity(1);

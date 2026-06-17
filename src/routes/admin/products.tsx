@@ -33,7 +33,7 @@ export function ProductsPage() {
     name: '', category: CATEGORIES[0], price: '', salePrice: '', stock: '', status: 'Active', description: '', image: '',
   });
 
-  const syncProducts = () => setProducts(db.getProducts());
+  const syncProducts = async () => setProducts(await db.getProducts());
 
   useEffect(() => {
     syncProducts();
@@ -56,7 +56,7 @@ export function ProductsPage() {
     setIsModalOpen(true);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const baseId = editProduct?.id || `PRD-${Date.now()}`;
     const payload: any = {
@@ -80,10 +80,10 @@ export function ProductsPage() {
       costPrice: editProduct?.costPrice || 0,
     };
     if (!payload.name) return toast.error('Product name is required');
-    db.saveProduct(payload);
+    await db.saveProduct(payload);
     toast.success(editProduct ? 'Product updated!' : 'Product added!');
     setIsModalOpen(false);
-    syncProducts();
+    await syncProducts();
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -103,11 +103,11 @@ export function ProductsPage() {
     reader.readAsDataURL(file);
   };
 
-  const handleDelete = (id: string) => {
-    db.deleteProduct(id);
+  const handleDelete = async (id: string) => {
+    await db.deleteProduct(id);
     toast.success('Product deleted');
     setDeleteId(null);
-    syncProducts();
+    await syncProducts();
   };
 
   const filtered = products.filter(p => {

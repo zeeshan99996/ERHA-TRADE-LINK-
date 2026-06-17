@@ -290,7 +290,7 @@ function CustomersPage() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [selectedCustomer, setSelectedCustomer] = useState<AdminCustomer | null>(null);
 
-  const syncCustomers = () => setCustomers(db.getCustomers());
+  const syncCustomers = async () => setCustomers(await db.getCustomers());
 
   useEffect(() => {
     syncCustomers();
@@ -322,9 +322,9 @@ function CustomersPage() {
       <CustomerSlideOver 
         customer={selectedCustomer} 
         onClose={() => setSelectedCustomer(null)} 
-        onSave={(updatedCust) => {
-          db.saveCustomer(updatedCust);
-          syncCustomers();
+        onSave={async (updatedCust) => {
+          await db.saveCustomer(updatedCust);
+          await syncCustomers();
           setSelectedCustomer(updatedCust);
         }}
       />

@@ -86,8 +86,9 @@ export default function AdminHeader({ title, subtitle, onMenuToggle }: AdminHead
 
   const unreadCount = notifList.filter(n => !n.read).length;
 
-  const syncNotifs = () => {
-    setNotifList(db.getNotifications());
+  const syncNotifs = async () => {
+    const data = await db.getNotifications();
+    setNotifList(data);
   };
 
   useEffect(() => {
@@ -110,15 +111,15 @@ export default function AdminHeader({ title, subtitle, onMenuToggle }: AdminHead
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const markAllRead = () => {
-    db.markAllNotificationsRead();
-    syncNotifs();
+  const markAllRead = async () => {
+    await db.markAllNotificationsRead();
+    await syncNotifs();
   };
 
-  const dismissNotif = (id: string, e: React.MouseEvent) => {
+  const dismissNotif = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    db.dismissNotification(id);
-    syncNotifs();
+    await db.dismissNotification(id);
+    await syncNotifs();
   };
 
   return (

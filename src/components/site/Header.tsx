@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Search, User, Heart, ShoppingCart, Menu, Shield } from "lucide-react";
+import { Search, Heart, ShoppingCart, Menu, Shield } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import logoImg from "@/assets/erha-logo.png";
 import { products } from "@/lib/products";
@@ -161,7 +161,6 @@ export function Header() {
         {/* Right: Actions */}
         <div className="flex lg:w-48 shrink-0 items-center justify-end gap-1 sm:gap-2">
 
-          <IconBtn label="Account" onClick={() => navigate({ to: "/admin" })}><User className="size-5" /></IconBtn>
           <IconBtn label="Wishlist"><Heart className="size-5" /></IconBtn>
           <IconBtn label="Cart" badge={cartCount > 0 ? String(cartCount) : undefined} onClick={openCartDrawer}>
             <ShoppingCart className="size-5" />

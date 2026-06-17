@@ -21,7 +21,7 @@ export function CouponsPage() {
     code: '', type: 'Percentage', value: '', minOrder: '', maxUsage: '', expiry: '', status: 'Active',
   });
 
-  const syncCoupons = () => setCoupons(db.getCoupons());
+  const syncCoupons = async () => setCoupons(await db.getCoupons());
 
   useEffect(() => {
     syncCoupons();
@@ -44,7 +44,7 @@ export function CouponsPage() {
     setIsModalOpen(true);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const code = form.code.toUpperCase().trim();
     if (!code) return toast.error('Coupon code is required');
@@ -61,17 +61,17 @@ export function CouponsPage() {
       status: form.status,
     };
 
-    db.saveCoupon(payload);
+    await db.saveCoupon(payload);
     toast.success(editCoupon ? 'Coupon updated!' : 'Coupon created!');
     setIsModalOpen(false);
-    syncCoupons();
+    await syncCoupons();
   };
 
-  const handleDelete = (id: string) => {
-    db.deleteCoupon(id);
+  const handleDelete = async (id: string) => {
+    await db.deleteCoupon(id);
     toast.success('Coupon deleted');
     setDeleteId(null);
-    syncCoupons();
+    await syncCoupons();
   };
 
   const handleCopy = (code: string) => {

@@ -48,9 +48,10 @@ export default function AdminSidebar({ isCollapsed, onToggle, mobileOpen, onMobi
   const [role, setRole] = useState(() => db.getUserRole());
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
 
-  const syncState = () => {
+  const syncState = async () => {
     setRole(db.getUserRole());
-    setPendingOrdersCount(db.getOrders().filter(o => o.orderStatus === 'Pending').length);
+    const orders = await db.getOrders();
+    setPendingOrdersCount(orders.filter(o => o.orderStatus === 'Pending').length);
   };
 
   useEffect(() => {

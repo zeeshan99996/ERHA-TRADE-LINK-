@@ -46,7 +46,7 @@ export function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
-  const syncOrders = () => setOrders(db.getOrders());
+  const syncOrders = async () => setOrders(await db.getOrders());
 
   useEffect(() => {
     syncOrders();
@@ -54,17 +54,17 @@ export function OrdersPage() {
     return () => window.removeEventListener('storage', syncOrders);
   }, []);
 
-  const handleUpdateStatus = (id: string, status: string) => {
-    db.updateOrderStatus(id, status);
-    syncOrders();
+  const handleUpdateStatus = async (id: string, status: string) => {
+    await db.updateOrderStatus(id, status);
+    await syncOrders();
     if (selectedOrder?.id === id) {
       setSelectedOrder((prev: any) => prev ? { ...prev, orderStatus: status } : prev);
     }
   };
 
-  const handleUpdatePaymentStatus = (id: string, status: string) => {
-    db.updateOrderPaymentStatus(id, status);
-    syncOrders();
+  const handleUpdatePaymentStatus = async (id: string, status: string) => {
+    await db.updateOrderPaymentStatus(id, status);
+    await syncOrders();
     if (selectedOrder?.id === id) {
       setSelectedOrder((prev: any) => prev ? { ...prev, paymentStatus: status } : prev);
     }

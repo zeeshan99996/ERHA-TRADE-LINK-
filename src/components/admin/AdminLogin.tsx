@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Lock, Mail, Eye, EyeOff, Zap, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
+import { db } from '@/lib/supabase';
 
 interface AdminLoginProps {
   onLoginSuccess: () => void;
@@ -13,31 +14,28 @@ export default function AdminLogin({ onLoginSuccess }: AdminLoginProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulated network delay
-    setTimeout(() => {
-      const validEmail = 'admin@erha.pk';
-      const validEmail2 = 'erhatradelinkinternational@gmail.com';
-      const validPassword = 'admin';
-      const validPassword2 = 'admin123';
-
-      const checkEmail = email.trim().toLowerCase();
-      
-      if (
-        (checkEmail === validEmail || checkEmail === validEmail2) && 
-        (password === validPassword || password === validPassword2)
-      ) {
+    try {
+      const res = await db.loginAdmin(email, password);
+      if (res.success) {
         localStorage.setItem('erha_admin_auth', 'true');
-        toast.success('Access Granted. Welcome back, Admin!');
+        if (res.user && res.user.role) {
+          db.setUserRole(res.user.role);
+        }
+        toast.success(`Access Granted. Welcome back, ${res.user?.name || 'Admin'}!`);
         onLoginSuccess();
       } else {
-        toast.error('Invalid email or password. Please try again.');
+        toast.error(res.message || 'Invalid email or password. Please try again.');
       }
+    } catch (err) {
+      console.error(err);
+      toast.error('An error occurred during authentication.');
+    } finally {
       setIsLoading(false);
-    }, 800);
+    }
   };
 
   const handleAutoFill = () => {

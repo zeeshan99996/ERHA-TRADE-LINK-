@@ -221,19 +221,25 @@ function DashboardPage() {
   const [customersCount, setCustomersCount] = useState(0)
 
   useEffect(() => {
-    setProducts(db.getProducts())
-    setOrders(db.getOrders())
-    setCustomersCount(db.getCustomers().length)
+    const syncAll = async () => {
+      try {
+        const [prods, ords, custs] = await Promise.all([
+          db.getProducts(),
+          db.getOrders(),
+          db.getCustomers()
+        ]);
+        setProducts(prods);
+        setOrders(ords);
+        setCustomersCount(custs.length);
+      } catch (err) {
+        console.error('Failed to load dashboard data:', err);
+      }
+    };
 
-    const syncAll = () => {
-      setProducts(db.getProducts())
-      setOrders(db.getOrders())
-      setCustomersCount(db.getCustomers().length)
-    }
-
-    window.addEventListener('storage', syncAll)
-    return () => window.removeEventListener('storage', syncAll)
-  }, [])
+    syncAll();
+    window.addEventListener('storage', syncAll);
+    return () => window.removeEventListener('storage', syncAll);
+  }, []);
 
   // Compute totals
   const activeOrders = orders.filter(o => o.orderStatus !== 'Cancelled')

@@ -33,7 +33,7 @@ export function PaymentsPage() {
   const [filter, setFilter] = useState('All');
   const [selected, setSelected] = useState<any | null>(null);
 
-  const syncPayments = () => setPayments(db.getPayments());
+  const syncPayments = async () => setPayments(await db.getPayments());
 
   useEffect(() => {
     syncPayments();

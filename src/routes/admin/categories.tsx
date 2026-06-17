@@ -18,7 +18,7 @@ export function CategoriesPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', slug: '', icon: ICONS[0] });
 
-  const syncCategories = () => setCategories(db.getCategories());
+  const syncCategories = async () => setCategories(await db.getCategories());
 
   useEffect(() => {
     syncCategories();
@@ -40,7 +40,7 @@ export function CategoriesPage() {
 
   const toSlug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) return toast.error('Category name is required');
     const payload: any = {
@@ -51,17 +51,17 @@ export function CategoriesPage() {
       imageUrl: editCat?.imageUrl || 'https://images.unsplash.com/photo-1609091839311-d5365f9ff1c5?w=400',
       parentId: null,
     };
-    db.saveCategory(payload);
+    await db.saveCategory(payload);
     toast.success(editCat ? 'Category updated!' : 'Category created!');
     setIsModalOpen(false);
-    syncCategories();
+    await syncCategories();
   };
 
-  const handleDelete = (id: string) => {
-    db.deleteCategory(id);
+  const handleDelete = async (id: string) => {
+    await db.deleteCategory(id);
     toast.success('Category deleted');
     setDeleteId(null);
-    syncCategories();
+    await syncCategories();
   };
 
   return (

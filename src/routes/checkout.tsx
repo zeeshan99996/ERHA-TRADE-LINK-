@@ -44,12 +44,12 @@ function CheckoutComponent() {
   const shippingRate = isFreeShipping ? 0 : 250;
 
   // Calculate discount when coupon is applied
-  const applyCoupon = () => {
+  const applyCoupon = async () => {
     if (!couponCode) {
       toast.error("Please enter a coupon code");
       return;
     }
-    const res = db.validateCoupon(couponCode, subtotal);
+    const res = await db.validateCoupon(couponCode, subtotal);
     if (!res.valid) {
       toast.error(res.message);
       setAppliedCoupon(null);
@@ -81,7 +81,7 @@ function CheckoutComponent() {
 
   const grandTotal = Math.max(0, subtotal + shippingRate - discountAmount);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (cartItems.length === 0) {
       toast.error("Your cart is empty!");
@@ -127,15 +127,15 @@ function CheckoutComponent() {
         notes: formData.notes,
       };
 
-      const newOrder = db.createOrder(orderParams);
+      const newOrder = await db.createOrder(orderParams);
 
       if (appliedCoupon) {
         try {
-          const coupons = db.getCoupons();
+          const coupons = await db.getCoupons();
           const targetCoupon = coupons.find((c) => c.id === appliedCoupon.id);
           if (targetCoupon) {
             targetCoupon.usageCount = (targetCoupon.usageCount || 0) + 1;
-            db.saveCoupon(targetCoupon);
+            await db.saveCoupon(targetCoupon);
           }
         } catch (couponErr) {
           console.error("Failed to update coupon usage count:", couponErr);

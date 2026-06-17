@@ -57,9 +57,10 @@ function ShopComponent() {
 
   // Load from local storage DB on mount & listen to changes
   useEffect(() => {
-    const loadData = () => {
-      setProductsList(db.getProducts());
-      const cats = db.getCategories();
+    const loadData = async () => {
+      const prods = await db.getProducts();
+      setProductsList(prods);
+      const cats = await db.getCategories();
       // Ensure "All" is not in list but we add it manually or handle it
       setCategoriesList(cats);
     };
