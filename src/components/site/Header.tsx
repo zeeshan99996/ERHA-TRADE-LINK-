@@ -88,9 +88,9 @@ export function Header() {
       </div>
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
         {/* Left: Logo */}
-        <div className="flex lg:w-48 shrink-0 items-center">
+        <div className="flex lg:w-56 shrink-0 items-center">
           <Link to="/" className="flex items-center">
-            <img src={logoImg} alt="ERHA Trade Link" className="h-9 w-auto sm:h-11 object-contain" />
+            <img src={logoImg} alt="ERHA Trade Link" className="h-10 w-auto sm:h-13 max-w-[160px] sm:max-w-[200px] object-contain" />
           </Link>
         </div>
 
