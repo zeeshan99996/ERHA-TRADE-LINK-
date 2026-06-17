@@ -90,7 +90,7 @@ export function Header() {
         {/* Left: Logo */}
         <div className="flex lg:w-64 shrink-0 items-center">
           <Link to="/" className="flex items-center">
-            <img src={logoImg} alt="ERHA Trade Link" className="h-12 w-auto sm:h-14 lg:h-16 max-w-[200px] object-contain" />
+            <img src={logoImg} alt="ERHA Trade Link" className="h-12 w-auto sm:h-14 lg:h-16 max-w-[180px] object-contain" />
           </Link>
         </div>
 
