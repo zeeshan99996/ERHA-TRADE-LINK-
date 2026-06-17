@@ -10,6 +10,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
+import logoImg from "../assets/erha-logo.png";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
 function NotFoundComponent() {
@@ -91,6 +92,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4a68f1e2-c611-42ca-bdee-f7ebd1c6dfb8/id-preview-41220d92--5856d7de-cfc0-463b-a467-12f3142e87b3.lovable.app-1780904646412.png" },
     ],
     links: [
+      {
+        rel: "icon",
+        type: "image/png",
+        href: logoImg,
+      },
       {
         rel: "stylesheet",
         href: appCss,
