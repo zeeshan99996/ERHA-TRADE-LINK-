@@ -183,3 +183,42 @@
 @utility shadow-glow {
   box-shadow: 0 10px 40px -10px oklch(0.58 0.21 260 / 0.35);
 }
+
+@keyframes float-slow {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-15px) rotate(3deg);
+  }
+}
+
+@keyframes float-medium {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(-3deg);
+  }
+}
+
+@keyframes float-fast {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(5deg);
+  }
+}
+
+@utility animate-float-slow {
+  animation: float-slow 8s ease-in-out infinite;
+}
+
+@utility animate-float-medium {
+  animation: float-medium 6s ease-in-out infinite;
+}
+
+@utility animate-float-fast {
+  animation: float-fast 4s ease-in-out infinite;
+}

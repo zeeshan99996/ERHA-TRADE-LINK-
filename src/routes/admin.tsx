@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 import AdminHeader from '@/components/admin/AdminHeader'
 import AdminLogin from '@/components/admin/AdminLogin'
+import { isSupabaseConfigured } from '@/lib/supabase'
 
 export const Route = createFileRoute('/admin')({
   component: AdminLayout,
@@ -11,7 +12,7 @@ export const Route = createFileRoute('/admin')({
 function AdminLayout() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
-    return localStorage.getItem('erha_admin_auth') === 'true';
+    return localStorage.getItem('erha_admin_auth') === 'true' || sessionStorage.getItem('erha_admin_auth') === 'true';
   })
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -22,7 +23,7 @@ function AdminLayout() {
   // Sync auth state from storage events (e.g. if logged out in another tab)
   useEffect(() => {
     const syncAuth = () => {
-      setIsAuthenticated(localStorage.getItem('erha_admin_auth') === 'true');
+      setIsAuthenticated(localStorage.getItem('erha_admin_auth') === 'true' || sessionStorage.getItem('erha_admin_auth') === 'true');
     };
     window.addEventListener('storage', syncAuth);
     return () => window.removeEventListener('storage', syncAuth);
@@ -87,6 +88,17 @@ function AdminLayout() {
           subtitle={current.subtitle}
           onMenuToggle={() => setMobileOpen(!mobileOpen)}
         />
+        
+        {!isSupabaseConfigured && (
+          <div className="bg-amber-50 border-b border-amber-250 px-4 py-3 text-amber-800 text-xs sm:text-sm flex items-start gap-2.5 shrink-0 shadow-xs">
+            <span className="text-base sm:text-lg leading-none mt-0.5">⚠️</span>
+            <div className="font-medium leading-normal">
+              Running in <span className="font-bold underline">Local Fallback Mode</span>. 
+              No database is connected. Products added here will only exist in this browser's local storage and will <strong>NOT</strong> show up on your live website or mobile devices.
+            </div>
+          </div>
+        )}
+
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           <Outlet />
         </main>

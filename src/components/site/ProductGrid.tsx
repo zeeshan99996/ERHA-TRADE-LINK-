@@ -10,21 +10,24 @@ export function ProductGrid({
   sub,
   items,
   centered,
+  compact,
 }: {
   eyebrow?: string;
   title: string;
   sub?: string;
   items: Product[];
   centered?: boolean;
+  compact?: boolean;
 }) {
   return (
-    <section className="bg-background py-12 sm:py-16 lg:py-20">
+    <section className="bg-background py-8 sm:py-12 lg:py-14">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <SectionHeading
           eyebrow={eyebrow}
           title={title}
           sub={sub}
           centered={centered}
+          compact={compact}
           action={
             <Link
               to="/shop"

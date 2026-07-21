@@ -1,8 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CreditCard, Search, Eye, X } from 'lucide-react';
+import { CreditCard, Search, Eye, X, Trash2 } from 'lucide-react';
 import { db } from '@/lib/supabase';
+import { toast } from 'sonner';
 
 export const Route = createFileRoute('/admin/payments')({
   component: PaymentsPage,
@@ -114,9 +115,27 @@ export function PaymentsPage() {
                     <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${PAYMENT_STATUS_COLORS[p.status] || 'bg-gray-100 text-gray-600'}`}>{p.status}</span>
                   </td>
                   <td className="px-5 py-3.5 text-right">
-                    <button onClick={() => setSelected(p)} className="flex items-center gap-1 ml-auto text-[11px] bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-bold px-2.5 py-1 rounded-lg transition-all">
-                      <Eye size={12} /> View
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button onClick={() => setSelected(p)} className="flex items-center gap-1 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-bold px-2.5 py-1.5 rounded-lg transition-all text-xs cursor-pointer">
+                        <Eye size={13} /> View
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (confirm(`Are you sure you want to delete transaction record ${p.id}?`)) {
+                            try {
+                              await db.deletePayment(p.id);
+                              toast.success("Payment record deleted successfully!");
+                              await syncPayments();
+                            } catch (err: any) {
+                              toast.error("Failed to delete payment: " + (err?.message || err));
+                            }
+                          }
+                        }}
+                        className="flex items-center gap-1 bg-red-50 text-red-650 hover:bg-red-100 font-bold px-2.5 py-1.5 rounded-lg transition-all text-xs cursor-pointer"
+                      >
+                        <Trash2 size={13} /> Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

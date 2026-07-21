@@ -113,7 +113,7 @@ export function CartDrawer() {
                   </div>
                   <h3 className="text-base font-bold text-ink mb-1.5">Your Cart is Empty</h3>
                   <p className="text-sm text-muted-foreground max-w-[280px] mb-6">
-                    Looks like you haven't added any premium power banks to your cart yet.
+                    Looks like you haven't added any premium products to your cart yet.
                   </p>
                   <button
                     onClick={() => {
@@ -132,7 +132,7 @@ export function CartDrawer() {
                       {/* Product Image */}
                       <div className="size-20 shrink-0 overflow-hidden rounded-xl border border-border/60 bg-muted">
                         <img
-                          src={item.product.image}
+                          src={item.product.image ? item.product.image.split('|||')[0] : ''}
                           alt={item.product.name}
                           className="size-full object-cover"
                         />

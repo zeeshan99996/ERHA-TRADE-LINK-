@@ -9,9 +9,7 @@ import { openCartDrawer } from "@/components/site/CartDrawer";
 const navItems = [
   { name: "Home", to: "/" },
   { name: "Shop", to: "/shop" },
-  { name: "Categories", to: "/#categories" },
-  { name: "Deals", to: "/shop", search: { category: "Ultra Compact" } },
-  { name: "Contact", to: "/#footer" }
+  { name: "Contact", to: "/contact" }
 ];
 
 const trendingSearches = ["Wireless Earbuds", "Smart Watches", "Power Banks", "Speakers", "Chargers"];
@@ -90,7 +88,7 @@ export function Header() {
         {/* Left: Logo */}
         <div className="flex lg:w-64 shrink-0 items-center">
           <Link to="/" className="flex items-center">
-            <img src={logoImg} alt="ERHA Trade Link" className="h-12 w-auto sm:h-14 lg:h-16 max-w-[180px] object-contain" />
+            <img src={logoImg} alt="ERHA Trade Link" className="h-10 w-auto sm:h-12 lg:h-14 max-w-[200px] sm:max-w-[240px] md:max-w-[280px] object-contain" />
           </Link>
         </div>
 
@@ -100,7 +98,7 @@ export function Header() {
             <Search className="size-4 text-muted-foreground shrink-0" />
             <input
               type="text"
-              placeholder="Search power banks, chargers…"
+              placeholder="Search tech & accessories…"
               className="w-full bg-transparent px-3 py-3 text-sm outline-none placeholder:text-muted-foreground"
               value={searchVal}
               onChange={(e) => setSearchVal(e.target.value)}
@@ -151,7 +149,7 @@ export function Header() {
                         onClick={() => setShowDropdown(false)}
                       >
                         <div className="size-12 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
-                          <img src={p.image} alt={p.name} className="size-full object-cover group-hover:scale-105 transition" />
+                          <img src={p.image ? p.image.split('|||')[0] : ''} alt={p.name} className="size-full object-cover group-hover:scale-105 transition" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-semibold truncate group-hover:text-brand transition">{p.name}</div>
@@ -261,7 +259,7 @@ export function Header() {
                             }}
                           >
                             <div className="size-10 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
-                              <img src={p.image} alt={p.name} className="size-full object-cover" />
+                              <img src={p.image ? p.image.split('|||')[0] : ''} alt={p.name} className="size-full object-cover" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="text-xs font-semibold truncate">{p.name}</div>

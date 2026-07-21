@@ -43,8 +43,8 @@ export function Categories() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <SectionHeading
           eyebrow="Shop By Category"
-          title="Power banks for every need"
-          sub="From everyday pocket chargers to heavy-duty solar power stations — find your perfect match."
+          title="Tech & accessories for every need"
+          sub="From everyday pocket power banks to wireless earbuds and smartwatches — find your perfect match."
           action={
             <Link to="/shop" className="inline-flex items-center gap-2 text-sm font-semibold text-brand hover:gap-3 transition-all">
               View all <ArrowRight className="size-4" />
@@ -56,7 +56,7 @@ export function Categories() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-5">
           {categoriesList.map((c, i) => {
             const Icon = iconMap[c.icon || "smartphone"] ?? BatteryCharging;
-            const meta = categoryMeta[c.name] ?? { color: "from-indigo-500 to-violet-500", desc: "Power banks" };
+            const meta = categoryMeta[c.name] ?? { color: "from-indigo-500 to-violet-500", desc: "Accessories" };
             return (
               <motion.div
                 key={c.name}

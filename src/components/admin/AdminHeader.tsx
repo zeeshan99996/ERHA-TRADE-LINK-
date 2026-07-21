@@ -122,6 +122,18 @@ export default function AdminHeader({ title, subtitle, onMenuToggle }: AdminHead
     await syncNotifs();
   };
 
+  const clearAllNotifs = async () => {
+    if (confirm("Are you sure you want to clear all notifications?")) {
+      try {
+        await db.clearAllNotifications();
+        await syncNotifs();
+        toast.success("Notifications cleared!");
+      } catch (err: any) {
+        toast.error("Failed to clear notifications: " + (err?.message || err));
+      }
+    }
+  };
+
   return (
     <header
       className="flex items-center h-16 px-4 md:px-6 shrink-0 gap-4 z-30"
@@ -326,12 +338,13 @@ export default function AdminHeader({ title, subtitle, onMenuToggle }: AdminHead
                 {notifList.length > 0 && (
                   <div className="px-4 py-2.5" style={{ borderTop: '1px solid #F1F5F9' }}>
                     <button
-                      className="w-full text-center text-xs font-medium py-1.5 rounded-lg transition-colors"
+                      onClick={clearAllNotifs}
+                      className="w-full text-center text-xs font-medium py-1.5 rounded-lg transition-colors cursor-pointer"
                       style={{ color: '#6366f1' }}
                       onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5F3FF')}
                       onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                     >
-                      View all notifications
+                      Clear all notifications
                     </button>
                   </div>
                 )}
@@ -439,8 +452,12 @@ export default function AdminHeader({ title, subtitle, onMenuToggle }: AdminHead
                 {/* Sign out */}
                 <div className="px-3 py-2.5" style={{ borderTop: '1px solid #F1F5F9' }}>
                   <button
-                    onClick={() => {
+                    onClick={async () => {
+                      await db.logoutAdmin();
                       localStorage.removeItem('erha_admin_auth');
+                      sessionStorage.removeItem('erha_admin_auth');
+                      localStorage.removeItem('erha_admin_email');
+                      sessionStorage.removeItem('erha_admin_email');
                       setShowAvatar(false);
                       toast.success('Successfully signed out of Admin Panel');
                       navigate({ to: '/' });

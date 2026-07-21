@@ -11,19 +11,22 @@ create table if not exists public.admins (
     created_at timestamptz default timezone('utc'::text, now()) not null
 );
 
--- Seed initial admin account
+-- Seed initial admin accounts
 insert into public.admins (email, password, role, name)
 values (
-    'admin@erha.pk',
-    'admin123',
+    'muhammadzeeshan0477@gmail.com',
+    'Erha@1122',
     'Super Admin',
-    'Admin User'
+    'Muhammad Zeeshan'
 )
 on conflict (email) do nothing;
 
 -- Enable Row Level Security (RLS) for admins
 alter table public.admins enable row level security;
-create policy "Allow read access to admins" on public.admins for select using (true);
+create policy "Allow read access to admins" on public.admins for select to authenticated using (true);
+create policy "Allow insert to admins" on public.admins for insert to authenticated with check (true);
+create policy "Allow update to admins" on public.admins for update to authenticated using (true) with check (true);
+create policy "Allow delete to admins" on public.admins for delete to authenticated using (true);
 
 
 -- 2. Products Table
@@ -58,7 +61,7 @@ create table if not exists public.products (
 -- Enable RLS for products
 alter table public.products enable row level security;
 create policy "Allow read access to products" on public.products for select using (true);
-create policy "Allow write access to products" on public.products for all using (true);
+create policy "Allow write access to products for authenticated" on public.products for all to authenticated using (true);
 
 
 -- 3. Categories Table
@@ -88,7 +91,7 @@ on conflict (id) do nothing;
 -- Enable RLS for categories
 alter table public.categories enable row level security;
 create policy "Allow read access to categories" on public.categories for select using (true);
-create policy "Allow write access to categories" on public.categories for all using (true);
+create policy "Allow write access to categories for authenticated" on public.categories for all to authenticated using (true);
 
 
 -- 4. Orders Table
@@ -120,8 +123,10 @@ create table if not exists public.orders (
 
 -- Enable RLS for orders
 alter table public.orders enable row level security;
-create policy "Allow read access to orders" on public.orders for select using (true);
-create policy "Allow write access to orders" on public.orders for all using (true);
+create policy "Allow select orders for authenticated" on public.orders for select to authenticated using (true);
+create policy "Allow insert orders for anyone" on public.orders for insert with check (true);
+create policy "Allow update orders for authenticated" on public.orders for update to authenticated using (true);
+create policy "Allow delete orders for authenticated" on public.orders for delete to authenticated using (true);
 
 
 -- 5. Customers Table
@@ -145,8 +150,10 @@ create table if not exists public.customers (
 
 -- Enable RLS for customers
 alter table public.customers enable row level security;
-create policy "Allow read access to customers" on public.customers for select using (true);
-create policy "Allow write access to customers" on public.customers for all using (true);
+create policy "Allow select customers for authenticated" on public.customers for select to authenticated using (true);
+create policy "Allow insert customers for anyone" on public.customers for insert with check (true);
+create policy "Allow update customers for authenticated" on public.customers for update to authenticated using (true);
+create policy "Allow delete customers for authenticated" on public.customers for delete to authenticated using (true);
 
 
 -- 6. Coupons Table
@@ -173,7 +180,9 @@ create table if not exists public.coupons (
 -- Enable RLS for coupons
 alter table public.coupons enable row level security;
 create policy "Allow read access to coupons" on public.coupons for select using (true);
-create policy "Allow write access to coupons" on public.coupons for all using (true);
+create policy "Allow insert coupons for authenticated" on public.coupons for insert to authenticated with check (true);
+create policy "Allow update coupons for anyone" on public.coupons for update using (true) with check (true);
+create policy "Allow delete coupons for authenticated" on public.coupons for delete to authenticated using (true);
 
 
 -- 7. Expenses Table
@@ -188,8 +197,8 @@ create table if not exists public.expenses (
 
 -- Enable RLS for expenses
 alter table public.expenses enable row level security;
-create policy "Allow read access to expenses" on public.expenses for select using (true);
-create policy "Allow write access to expenses" on public.expenses for all using (true);
+create policy "Allow select expenses for authenticated" on public.expenses for select to authenticated using (true);
+create policy "Allow write expenses for authenticated" on public.expenses for all to authenticated using (true);
 
 
 -- 8. Payments Table
@@ -209,8 +218,10 @@ create table if not exists public.payments (
 
 -- Enable RLS for payments
 alter table public.payments enable row level security;
-create policy "Allow read access to payments" on public.payments for select using (true);
-create policy "Allow write access to payments" on public.payments for all using (true);
+create policy "Allow select payments for authenticated" on public.payments for select to authenticated using (true);
+create policy "Allow insert payments for anyone" on public.payments for insert with check (true);
+create policy "Allow update payments for authenticated" on public.payments for update to authenticated using (true);
+create policy "Allow delete payments for authenticated" on public.payments for delete to authenticated using (true);
 
 
 -- 9. Notifications Table
@@ -226,5 +237,28 @@ create table if not exists public.notifications (
 
 -- Enable RLS for notifications
 alter table public.notifications enable row level security;
-create policy "Allow read access to notifications" on public.notifications for select using (true);
-create policy "Allow write access to notifications" on public.notifications for all using (true);
+create policy "Allow select notifications for authenticated" on public.notifications for select to authenticated using (true);
+create policy "Allow insert notifications for anyone" on public.notifications for insert with check (true);
+create policy "Allow update notifications for authenticated" on public.notifications for update to authenticated using (true);
+create policy "Allow delete notifications for authenticated" on public.notifications for delete to authenticated using (true);
+
+-- 10. Seed Default Admin to auth.users for Supabase Auth Sign-In
+-- This seeds muhammadzeeshan0477@gmail.com with password 'Erha@1122'
+insert into auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, role, confirmation_token, recovery_token, email_change_token_new, email_change)
+values (
+  'd0d0d0d0-d0d0-d0d0-d0d0-d0d0d0d0d0d0',
+  '00000000-0000-0000-0000-000000000000',
+  'muhammadzeeshan0477@gmail.com',
+  crypt('Erha@1122', gen_salt('bf')),
+  now(),
+  '{"provider":"email","providers":["email"]}',
+  '{"name":"Muhammad Zeeshan","role":"Super Admin"}',
+  now(),
+  now(),
+  'authenticated',
+  '',
+  '',
+  '',
+  ''
+)
+on conflict (id) do nothing;

@@ -5,7 +5,6 @@ import { Link } from "@tanstack/react-router";
 const quickLinks: Record<string, { to: string; search?: any }> = {
   Home: { to: "/" },
   Shop: { to: "/shop" },
-  Deals: { to: "/shop", search: { category: "Ultra Compact" } },
   "About Us": { to: "/#whychoose" },
   Contact: { to: "/#footer" },
 };
@@ -39,7 +38,7 @@ export function Footer() {
               <img src={logoImg} alt="ERHA Trade Link" className="h-9 w-auto sm:h-10" />
             </div>
             <p className="mt-4 max-w-sm text-sm leading-relaxed">
-              ERHA Trade Link International — Pakistan's trusted destination for premium power banks, from ultra-compact everyday chargers to heavy-duty solar power stations.
+              ERHA Trade Link International — Pakistan's trusted destination for premium tech and charging accessories, from wireless audio and earbuds to heavy-duty power stations.
             </p>
             {/* Contact Info */}
             <div className="mt-5 space-y-2.5 text-sm">

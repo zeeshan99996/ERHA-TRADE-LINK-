@@ -12,7 +12,7 @@ export function Newsletter() {
                 <Mail className="size-5" />
               </div>
               <h2 className="mt-3 sm:mt-4 font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-ink leading-tight">
-                Stay updated with latest power banks
+                Stay updated with latest tech & deals
               </h2>
               <p className="mt-2 text-sm sm:text-base text-muted-foreground">
                 Get exclusive deals, new arrival alerts, and tech tips from ERHA Trade Link International — straight to your inbox.

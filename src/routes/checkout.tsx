@@ -6,12 +6,13 @@ import { getCart, clearCart, getCartTotal } from "@/lib/cart";
 import { db } from "@/lib/supabase";
 import { toast } from "sonner";
 import { ShieldCheck, Ticket, CheckCircle2, ArrowRight, CornerDownRight, Landmark, CreditCard, MessageCircle, Truck } from "lucide-react";
+import { sendOrderConfirmationEmail } from "@/lib/mail";
 
 export const Route = createFileRoute("/checkout")({
   head: () => ({
     meta: [
       { title: "Checkout | ERHA Trade Link" },
-      { name: "description", content: "Complete your order for premium power banks with Cash on Delivery or Mobile Payments." }
+      { name: "description", content: "Complete your order for premium tech and accessories with Cash on Delivery or Mobile Payments." }
     ],
   }),
   component: CheckoutComponent,
@@ -95,6 +96,10 @@ function CheckoutComponent() {
       toast.error("Please enter your phone number");
       return;
     }
+    if (!formData.email.trim()) {
+      toast.error("Please enter your email address");
+      return;
+    }
     if (!formData.address.trim()) {
       toast.error("Please enter your shipping address");
       return;
@@ -144,6 +149,34 @@ function CheckoutComponent() {
 
       clearCart();
       setOrderSuccess(newOrder);
+
+      // Automatically trigger admin order confirmation email to customer
+      if (newOrder && newOrder.email) {
+        try {
+          const mailRes = await sendOrderConfirmationEmail({
+            id: newOrder.id,
+            customer: newOrder.customer,
+            email: newOrder.email,
+            phone: newOrder.phone,
+            address: newOrder.address,
+            items: newOrder.items,
+            total: newOrder.total,
+            paymentMethod: newOrder.paymentMethod,
+            discountAmount: newOrder.discountAmount,
+            shippingRate: newOrder.shippingRate,
+          });
+          if (mailRes.success) {
+            if (mailRes.message) {
+              toast.info(mailRes.message);
+            }
+          } else {
+            toast.error(`Email error: ${mailRes.message}`);
+          }
+        } catch (mailErr) {
+          console.error("Error sending order confirmation email:", mailErr);
+        }
+      }
+
       toast.success("Order placed successfully!");
       window.scrollTo(0, 0);
     } catch (err) {
@@ -276,9 +309,10 @@ function CheckoutComponent() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-ink uppercase tracking-wider">Email Address (Optional)</label>
+                  <label className="text-xs font-bold text-ink uppercase tracking-wider">Email Address *</label>
                   <input
                     type="email"
+                    required
                     placeholder="e.g. customer@gmail.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -392,7 +426,7 @@ function CheckoutComponent() {
                   {cartItems.map((item) => (
                     <div key={item.product.id} className="flex gap-3 text-sm">
                       <div className="size-12 rounded-lg border border-border/60 overflow-hidden bg-muted shrink-0">
-                        <img src={item.product.image} alt={item.product.name} className="size-full object-cover" />
+                        <img src={item.product.image ? item.product.image.split('|||')[0] : ''} alt={item.product.name} className="size-full object-cover" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="font-bold text-ink truncate">{item.product.name}</h4>

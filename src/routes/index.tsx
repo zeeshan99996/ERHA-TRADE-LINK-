@@ -1,36 +1,33 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Header } from "@/components/site/Header";
 import { Hero } from "@/components/site/Hero";
-import { TrustBadges } from "@/components/site/TrustBadges";
-import { Categories } from "@/components/site/Categories";
+import { CategoryMarquee } from "@/components/site/CategoryMarquee";
 import { ProductGrid } from "@/components/site/ProductGrid";
-import { PromoBanner } from "@/components/site/PromoBanner";
 import { WhyChoose } from "@/components/site/WhyChoose";
-import { Newsletter } from "@/components/site/Newsletter";
 import { Footer } from "@/components/site/Footer";
 import { useState, useEffect } from "react";
 import { db } from "@/lib/supabase";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/")(({
   head: () => ({
     meta: [
-      { title: "ERHA Trade Link International — Premium Power Banks in Multan, Pakistan" },
+      { title: "ERHA Trade Link International — Premium Tech & Accessories in Multan, Pakistan" },
       {
         name: "description",
         content:
-          "Buy genuine power banks in Multan, Pakistan. ERHA Trade Link International offers MagSafe, Solar, Laptop & Ultra Compact power banks with fast delivery nationwide. Visit us at Pace N Pace Mall, Chungi #6, Multan.",
+          "Buy genuine tech and charging accessories in Multan, Pakistan. ERHA Trade Link International offers premium power banks, wireless earbuds, smartwatches, and chargers with fast delivery nationwide. Visit us at Pace N Pace Mall, Chungi #6, Multan.",
       },
-      { property: "og:title", content: "ERHA Trade Link International — Power Banks Multan" },
+      { property: "og:title", content: "ERHA Trade Link International — Premium Tech Multan" },
       {
         property: "og:description",
         content:
-          "Pakistan's trusted power bank store. Shop 5,000mAh to 50,000mAh power banks with JazzCash, EasyPaisa & COD delivery.",
+          "Pakistan's trusted tech store. Shop premium power banks, wireless earbuds, smartwatches and charging gear with JazzCash, EasyPaisa & COD delivery.",
       },
-      { name: "keywords", content: "power bank multan, power bank pakistan, erha trade link, magsafe power bank, solar power bank, laptop power bank, portable charger pakistan" },
+      { name: "keywords", content: "power bank multan, wireless earbuds multan, smartwatch pakistan, tech shop multan, erha trade link, magsafe power bank, solar charger, portable charger pakistan" },
     ],
   }),
   component: Index,
-});
+} as any));
 
 function Index() {
   const [featured, setFeatured] = useState<any[]>([]);
@@ -38,8 +35,8 @@ function Index() {
   useEffect(() => {
     const loadProducts = async () => {
       const prods = await db.getProducts();
-      // Only display active products on the homepage grid
-      setFeatured(prods.filter((p) => p.status === "Active").slice(0, 8));
+      const active = prods.filter((p) => p.status === "Active");
+      setFeatured(active);
     };
     loadProducts();
     window.addEventListener("storage", loadProducts);
@@ -50,21 +47,18 @@ function Index() {
     <div className="min-h-screen bg-background">
       <Header />
       <main>
-        <Hero />
-        <TrustBadges />
-        <Categories />
+        <Hero products={featured} />
+        <CategoryMarquee />
         <ProductGrid
-          eyebrow="Our Products"
-          title="Premium Power Banks"
-          sub="Engineered for speed, built for reliability — every ERHA power bank comes with warranty."
-          items={featured}
+          title="OUR PREMIUM PRODUCTS"
+          items={featured.slice(0, 8)}
           centered
+          compact
         />
-        <PromoBanner />
         <WhyChoose />
-        <Newsletter />
       </main>
       <Footer />
     </div>
   );
 }
+

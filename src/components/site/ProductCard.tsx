@@ -7,8 +7,10 @@ import { openCartDrawer } from "@/components/site/CartDrawer";
 import { toast } from "sonner";
 
 export function ProductCard({ p, i = 0 }: { p: Product; i?: number }) {
-  const discountPct = p.oldPrice
-    ? Math.round(((p.oldPrice - p.price) / p.oldPrice) * 100)
+  const price = p.salePrice || p.price;
+  const hasDiscount = p.salePrice !== undefined && p.price > p.salePrice;
+  const discountPct = hasDiscount
+    ? Math.round(((p.price - p.salePrice!) / p.price) * 100)
     : null;
 
   const handleAddToCart = (e: React.MouseEvent) => {
@@ -18,8 +20,9 @@ export function ProductCard({ p, i = 0 }: { p: Product; i?: number }) {
       id: p.id,
       name: p.name,
       category: p.category,
-      image: p.image,
-      price: p.price,
+      image: p.image ? p.image.split('|||')[0] : '',
+      price: price,
+      stock: p.stock,
       // fallback if stock is not defined in static product
     }, 1);
     toast.success(`${p.name} added to cart!`);
@@ -35,12 +38,12 @@ export function ProductCard({ p, i = 0 }: { p: Product; i?: number }) {
       className="group relative flex flex-col overflow-hidden rounded-xl sm:rounded-2xl border border-border bg-card shadow-soft transition hover:-translate-y-1 hover:shadow-glow"
     >
       {/* Image area */}
-      <Link to="/product/$id" params={{ id: p.id }} className="relative aspect-square overflow-hidden bg-muted block">
+      <Link to="/product/$id" params={{ id: p.id }} className="relative aspect-square overflow-hidden bg-white flex items-center justify-center p-3 border-b border-slate-100 block">
         <img
-          src={p.image}
+          src={p.image ? p.image.split('|||')[0] : ''}
           alt={p.name}
           loading="lazy"
-          className="size-full object-cover transition duration-500 group-hover:scale-110"
+          className="size-full object-contain transition duration-500 group-hover:scale-105"
         />
 
         {/* Badge */}
@@ -113,9 +116,9 @@ export function ProductCard({ p, i = 0 }: { p: Product; i?: number }) {
 
         {/* Price */}
         <div className="mt-2 sm:mt-3 flex items-baseline gap-1.5">
-          <span className="font-display text-sm sm:text-lg font-bold text-brand">Rs. {p.price.toLocaleString()}</span>
-          {p.oldPrice && (
-            <span className="text-[10px] sm:text-xs text-muted-foreground line-through">Rs. {p.oldPrice.toLocaleString()}</span>
+          <span className="font-display text-sm sm:text-lg font-bold text-brand">Rs. {price.toLocaleString()}</span>
+          {hasDiscount && (
+            <span className="text-[10px] sm:text-xs text-muted-foreground line-through">Rs. {p.price.toLocaleString()}</span>
           )}
         </div>
       </div>

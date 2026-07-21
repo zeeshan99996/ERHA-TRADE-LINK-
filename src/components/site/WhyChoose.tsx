@@ -3,7 +3,7 @@ import { SectionHeading } from "./SectionHeading";
 import { motion } from "motion/react";
 
 const features = [
-  { icon: Award, title: "Genuine Products", desc: "All power banks are brand-certified with authentic quality guarantee.", color: "from-violet-500 to-indigo-500" },
+  { icon: Award, title: "Genuine Products", desc: "All products are brand-certified with authentic quality guarantee.", color: "from-violet-500 to-indigo-500" },
   { icon: Truck, title: "Fast Nationwide Delivery", desc: "Same-day dispatch from Multan. 1–3 day delivery across Pakistan.", color: "from-blue-500 to-cyan-500" },
   { icon: Lock, title: "Secure Payments", desc: "JazzCash, EasyPaisa, COD, and bank transfers accepted.", color: "from-amber-500 to-orange-500" },
   { icon: Smile, title: "Trusted by Thousands", desc: "10,000+ happy customers across Pakistan with 4.8★ rating.", color: "from-green-500 to-emerald-500" },

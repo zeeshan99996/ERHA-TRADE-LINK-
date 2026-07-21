@@ -78,16 +78,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "ERHA Trade Link — Premium Power Banks & Portable Charging" },
-      { name: "description", content: "Shop premium MagSafe wireless chargers, high capacity battery packs, laptop power banks, and solar charging devices at ERHA Trade Link." },
+      { title: "ERHA Trade Link — Premium Tech & Charging Accessories" },
+      { name: "description", content: "Shop premium wireless earbuds, smartwatches, power banks, and charging accessories at ERHA Trade Link." },
       { name: "author", content: "ERHA Trade Link" },
-      { property: "og:title", content: "ERHA Trade Link — Premium Power Banks" },
-      { property: "og:description", content: "Shop premium MagSafe wireless chargers, high capacity battery packs, laptop power banks, and solar charging devices at ERHA Trade Link." },
+      { property: "og:title", content: "ERHA Trade Link — Premium Tech & Accessories" },
+      { property: "og:description", content: "Shop premium wireless earbuds, smartwatches, power banks, and charging accessories at ERHA Trade Link." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "ERHA Trade Link — Premium Power Banks" },
-      { name: "twitter:description", content: "Shop premium MagSafe wireless chargers, high capacity battery packs, laptop power banks, and solar charging devices at ERHA Trade Link." },
+      { name: "twitter:title", content: "ERHA Trade Link — Premium Tech & Accessories" },
+      { name: "twitter:description", content: "Shop premium wireless earbuds, smartwatches, power banks, and charging accessories at ERHA Trade Link." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4a68f1e2-c611-42ca-bdee-f7ebd1c6dfb8/id-preview-41220d92--5856d7de-cfc0-463b-a467-12f3142e87b3.lovable.app-1780904646412.png" },
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4a68f1e2-c611-42ca-bdee-f7ebd1c6dfb8/id-preview-41220d92--5856d7de-cfc0-463b-a467-12f3142e87b3.lovable.app-1780904646412.png" },
     ],
@@ -119,6 +119,7 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
+        <meta name="facebook-domain-verification" content="6ec0mn8g896id3ziv7w6caavzb57ih" />
         <HeadContent />
       </head>
       <body>

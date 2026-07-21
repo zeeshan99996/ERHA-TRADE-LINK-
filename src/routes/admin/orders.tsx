@@ -1,8 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShoppingBag, Search, Eye, X, Filter } from 'lucide-react';
+import { ShoppingBag, Search, Eye, X, Filter, Trash2 } from 'lucide-react';
 import { db } from '@/lib/supabase';
+import { toast } from 'sonner';
 
 export const Route = createFileRoute('/admin/orders')({
   component: OrdersPage,
@@ -88,12 +89,11 @@ export function OrdersPage() {
   return (
     <div className="space-y-5">
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { label: 'Total Orders', value: stats.total, color: 'text-indigo-600', bg: 'bg-indigo-50' },
           { label: 'Pending', value: stats.pending, color: 'text-amber-600', bg: 'bg-amber-50' },
           { label: 'Delivered', value: stats.delivered, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-          { label: 'Paid Revenue', value: fmtRs(stats.revenue), color: 'text-violet-600', bg: 'bg-violet-50' },
         ].map(s => (
           <div key={s.label} className={`${s.bg} rounded-2xl p-4`}>
             <p className="text-xs text-slate-500 font-medium">{s.label}</p>
@@ -180,10 +180,28 @@ export function OrdersPage() {
                     </select>
                   </td>
                   <td className="px-5 py-3.5 text-right">
-                    <button onClick={() => setSelectedOrder(o)}
-                      className="flex items-center gap-1 ml-auto text-[11px] bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-bold px-2.5 py-1 rounded-lg transition-all">
-                      <Eye size={12} /> View
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button onClick={() => setSelectedOrder(o)}
+                        className="flex items-center gap-1 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-bold px-2.5 py-1.5 rounded-lg transition-all text-xs cursor-pointer">
+                        <Eye size={13} /> View
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (confirm(`Are you sure you want to delete order ${o.id}? This will also delete its payment records.`)) {
+                            try {
+                              await db.deleteOrder(o.id);
+                              toast.success("Order deleted successfully!");
+                              await syncOrders();
+                            } catch (err: any) {
+                              toast.error("Failed to delete order: " + (err?.message || err));
+                            }
+                          }
+                        }}
+                        className="flex items-center gap-1 bg-red-50 text-red-600 hover:bg-red-100 font-bold px-2.5 py-1.5 rounded-lg transition-all text-xs cursor-pointer"
+                      >
+                        <Trash2 size={13} /> Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

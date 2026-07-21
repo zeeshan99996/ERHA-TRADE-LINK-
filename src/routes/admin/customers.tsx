@@ -17,9 +17,11 @@ import {
   ChevronDown,
   MessageSquare,
   Save,
+  Trash2,
 } from 'lucide-react';
 import { useEffect } from 'react';
 import { db } from '@/lib/supabase';
+import { toast } from 'sonner';
 
 export type AdminCustomer = {
   id: string;
@@ -474,13 +476,32 @@ function CustomersPage() {
 
                   {/* Actions */}
                   <td className="px-5 py-4 text-right">
-                    <button
-                      onClick={() => setSelectedCustomer(c)}
-                      className="flex items-center gap-1.5 ml-auto text-xs font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-all"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      View
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => setSelectedCustomer(c)}
+                        className="flex items-center gap-1 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-bold px-2.5 py-1.5 rounded-lg transition-all text-xs cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        View
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (confirm(`Are you sure you want to delete customer ${c.name}?`)) {
+                            try {
+                              await db.deleteCustomer(c.id);
+                              toast.success("Customer deleted successfully!");
+                              await syncCustomers();
+                            } catch (err: any) {
+                              toast.error("Failed to delete customer: " + (err?.message || err));
+                            }
+                          }
+                        }}
+                        className="flex items-center gap-1 bg-red-50 text-red-650 hover:bg-red-100 font-bold px-2.5 py-1.5 rounded-lg transition-all text-xs cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </motion.tr>
               ))}
