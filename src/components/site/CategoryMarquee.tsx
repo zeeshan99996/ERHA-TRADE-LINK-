@@ -23,6 +23,7 @@ export function CategoryMarquee() {
         .marquee-track {
           display: flex;
           width: max-content;
+          will-change: transform;
           animation: marqueeScroll 25s linear infinite;
         }
         .marquee-track:hover {

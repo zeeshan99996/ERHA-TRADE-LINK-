@@ -64,6 +64,8 @@ function ProductCard({ product, palette, side }: ProductCardProps) {
           <img
             src={img}
             alt={product.name}
+            loading="eager"
+            decoding="async"
             className="w-full h-full object-contain"
             style={{ filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.15))" }}
           />
