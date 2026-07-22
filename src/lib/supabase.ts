@@ -395,24 +395,37 @@ export const db = {
     }
   },
   deleteProduct: async (id: string): Promise<void> => {
-    // 1. Delete from localStorage immediately (optimistic update)
-    const products = getStorage(KEYS.PRODUCTS, initialProducts);
-    const updated = products.filter((x) => x.id !== id);
+    const products = getStorage(KEYS.PRODUCTS, []);
+    const updated = products.filter((x: any) => String(x.id) !== String(id));
     setStorage(KEYS.PRODUCTS, updated);
 
-    // 2. Perform background delete on Supabase
     if (isSupabaseConfigured && supabase) {
       try {
-        const { error } = await withRetry(() => supabase!.from('products').delete().eq('id', id));
-        if (error) {
-          console.error('Supabase deleteProduct error:', error);
-          throw new Error(error.message);
-        }
+        await supabase.from('products').delete().eq('id', id);
       } catch (err: any) {
         console.error('Supabase deleteProduct exception:', err);
-        throw err;
       }
     }
+
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('erha_products_update'));
+  },
+
+  deleteOrder: async (id: string): Promise<void> => {
+    const orders = getStorage(KEYS.ORDERS, []);
+    const updated = orders.filter((x: any) => String(x.id) !== String(id));
+    setStorage(KEYS.ORDERS, updated);
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('orders').delete().eq('id', id);
+      } catch (err: any) {
+        console.error('Supabase deleteOrder exception:', err);
+      }
+    }
+
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('erha_orders_update'));
   },
 
   // CATEGORIES
