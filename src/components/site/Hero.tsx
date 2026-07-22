@@ -58,8 +58,12 @@ function ProductCard({ product, palette, side }: ProductCardProps) {
       className="flex items-center gap-3 h-full"
       style={{ flexDirection: side === "left" ? "row" : "row-reverse" }}
     >
-      {/* Product Image — no background, pure PNG */}
-      <div className="shrink-0 flex items-center justify-center w-24 sm:w-32 h-24 sm:h-32">
+      {/* Product Image Link — pure PNG backlink to product detail */}
+      <Link
+        to={`/product/${product.id}`}
+        className="shrink-0 flex items-center justify-center w-24 sm:w-32 h-24 sm:h-32 group cursor-pointer"
+        aria-label={`View ${product.name}`}
+      >
         {img ? (
           <img
             src={img}
@@ -68,7 +72,7 @@ function ProductCard({ product, palette, side }: ProductCardProps) {
             height="128"
             loading="eager"
             decoding="async"
-            className="w-full h-full object-contain"
+            className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
             style={{ filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.15))" }}
           />
         ) : (
@@ -76,26 +80,27 @@ function ProductCard({ product, palette, side }: ProductCardProps) {
             <span className="text-slate-400 text-xs">No image</span>
           </div>
         )}
-      </div>
+      </Link>
 
       {/* Product Info */}
       <div className="flex flex-col gap-1.5 min-w-0 flex-1">
-        {/* Category badge */}
-        <span
-          className="inline-flex items-center gap-1 self-start px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
-          style={{ background: palette.accent }}
-        >
-          <Zap className="size-2.5" />
-          {product.category || "Tech"}
-        </span>
+        {/* Category badge & Name Link */}
+        <Link to={`/product/${product.id}`} className="flex flex-col gap-1 group cursor-pointer">
+          <span
+            className="inline-flex items-center gap-1 self-start px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
+            style={{ background: palette.accent }}
+          >
+            <Zap className="size-2.5" />
+            {product.category || "Tech"}
+          </span>
 
-        {/* Name */}
-        <h2 className="font-black text-sm sm:text-base lg:text-lg text-slate-900 leading-tight line-clamp-2">
-          {product.name}
-        </h2>
+          <h2 className="font-black text-sm sm:text-base lg:text-lg text-slate-900 leading-tight line-clamp-2 group-hover:text-brand transition-colors">
+            {product.name}
+          </h2>
+        </Link>
 
         {/* Price */}
-        <div className="flex items-baseline gap-1.5 flex-wrap">
+        <Link to={`/product/${product.id}`} className="flex items-baseline gap-1.5 flex-wrap cursor-pointer">
           <span className="text-sm sm:text-base font-black text-slate-900">
             Rs {Number(price).toLocaleString()}
           </span>
@@ -109,7 +114,7 @@ function ProductCard({ product, palette, side }: ProductCardProps) {
               </span>
             </>
           )}
-        </div>
+        </Link>
 
         {/* Buttons */}
         <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
@@ -200,7 +205,7 @@ export function Hero({ products = [] }: HeroProps) {
         setTimeout(() => { setIdx(next); setVisible(true); }, 250);
         return prev;
       });
-    }, 6000);
+    }, 7500);
   }, [pairs.length]);
 
   useEffect(() => {
