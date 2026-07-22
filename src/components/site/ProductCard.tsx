@@ -42,7 +42,10 @@ export function ProductCard({ p, i = 0 }: { p: Product; i?: number }) {
         <img
           src={p.image ? p.image.split('|||')[0] : ''}
           alt={p.name}
+          width="300"
+          height="300"
           loading="lazy"
+          decoding="async"
           className="size-full object-contain transition duration-500 group-hover:scale-105"
         />
 

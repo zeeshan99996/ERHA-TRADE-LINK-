@@ -87,8 +87,8 @@ export function Header() {
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
         {/* Left: Logo */}
         <div className="flex lg:w-64 shrink-0 items-center">
-          <Link to="/" className="flex items-center">
-            <img src={logoImg} alt="ERHA Trade Link" className="h-10 w-auto sm:h-12 lg:h-14 max-w-[200px] sm:max-w-[240px] md:max-w-[280px] object-contain" />
+          <Link to="/" className="flex items-center" aria-label="ERHA Trade Link Home">
+            <img src={logoImg} alt="ERHA Trade Link" width="200" height="48" fetchPriority="high" className="h-10 w-auto sm:h-12 lg:h-14 max-w-[200px] sm:max-w-[240px] md:max-w-[280px] object-contain" />
           </Link>
         </div>
 
@@ -98,6 +98,7 @@ export function Header() {
             <Search className="size-4 text-muted-foreground shrink-0" />
             <input
               type="text"
+              aria-label="Search tech & accessories"
               placeholder="Search tech & accessories…"
               className="w-full bg-transparent px-3 py-3 text-sm outline-none placeholder:text-muted-foreground"
               value={searchVal}

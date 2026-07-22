@@ -64,6 +64,8 @@ function ProductCard({ product, palette, side }: ProductCardProps) {
           <img
             src={img}
             alt={product.name}
+            width="128"
+            height="128"
             loading="eager"
             decoding="async"
             className="w-full h-full object-contain"
