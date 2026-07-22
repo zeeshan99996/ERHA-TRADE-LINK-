@@ -322,38 +322,29 @@ async function withRetry<T extends { error?: any }>(
 export const db = {
   // PRODUCTS
   getProducts: async (): Promise<any[]> => {
+    const cached = getStorage(KEYS.PRODUCTS, initialProducts);
+
     if (isSupabaseConfigured && supabase) {
-      try {
-        const { data, error } = await withRetry(() => supabase!.from('products').select('*').order('created_at', { ascending: false }));
-        if (!error && data) {
-          const camelData = rowsToCamel(data);
-          const cached = getStorage(KEYS.PRODUCTS, []);
-          
-          if (data.length > 0) {
-            setStorage(KEYS.PRODUCTS, camelData);
-            return camelData;
-          } else if (data.length === 0 && cached.length > 0) {
-            // Seeding: if database is empty but local has seed products, write them to database
-            console.log("Supabase empty, seeding with local products...");
-            for (const p of cached) {
-              await withRetry(() => supabase!.from('products').upsert(rowToLower(p)));
-            }
-            const { data: refetched } = await withRetry(() => supabase!.from('products').select('*').order('created_at', { ascending: false }));
-            if (refetched) {
-              const camelRefetched = rowsToCamel(refetched);
-              setStorage(KEYS.PRODUCTS, camelRefetched);
-              return camelRefetched;
+      supabase
+        .from('products')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .then(async ({ data, error }) => {
+          if (!error && data) {
+            const camelData = rowsToCamel(data);
+            if (data.length > 0) {
+              setStorage(KEYS.PRODUCTS, camelData);
+              window.dispatchEvent(new Event('storage'));
+            } else if (data.length === 0 && cached.length > 0) {
+              const rows = cached.map((p: any) => rowToLower(p));
+              await supabase!.from('products').upsert(rows, { onConflict: 'id' });
             }
           }
-        }
-        if (error) {
-          console.error("Supabase getProducts error, falling back to cache:", error);
-        }
-      } catch (e) {
-        console.error("Supabase getProducts exception, falling back to cache:", e);
-      }
+        })
+        .catch((e) => console.warn("Supabase background sync:", e));
     }
-    return getStorage(KEYS.PRODUCTS, initialProducts);
+
+    return cached;
   },
   getProduct: async (id: string): Promise<any | null> => {
     if (isSupabaseConfigured && supabase) {
@@ -495,19 +486,24 @@ export const db = {
 
   // ORDERS
   getOrders: async (): Promise<any[]> => {
+    const cached = getStorage(KEYS.ORDERS, initialOrders);
+
     if (isSupabaseConfigured && supabase) {
-      try {
-        const { data, error } = await withRetry(() => supabase!.from('orders').select('*').order('created_at', { ascending: false }));
-        if (!error && data) {
-          const camelData = rowsToCamel(data);
-          setStorage(KEYS.ORDERS, camelData);
-          return camelData;
-        }
-      } catch (e) {
-        console.error("Supabase getOrders error, falling back to cache:", e);
-      }
+      supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .then(({ data, error }) => {
+          if (!error && data) {
+            const camelData = rowsToCamel(data);
+            setStorage(KEYS.ORDERS, camelData);
+            window.dispatchEvent(new Event('storage'));
+          }
+        })
+        .catch((e) => console.warn("Supabase orders background sync:", e));
     }
-    return getStorage(KEYS.ORDERS, initialOrders);
+
+    return cached;
   },
   createOrder: async (orderData: {
     customerName: string;
