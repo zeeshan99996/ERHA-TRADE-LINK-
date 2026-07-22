@@ -532,111 +532,10 @@ export const db = {
     total: number;
     notes?: string;
   }): Promise<any> => {
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { count } = await supabase.from('orders').select('*', { count: 'exact', head: true });
-        const orderNum = `ORD-2026-${String((count || 0) + 1).padStart(3, '0')}`;
-
-        const newOrder = {
-          id: orderNum,
-          customer: orderData.customerName,
-          email: orderData.email,
-          phone: orderData.phone,
-          items: orderData.items.map((x) => `${x.name} x${x.quantity}`),
-          total: orderData.total,
-          paymentStatus: orderData.paymentMethod === 'COD' ? 'Pending' : 'Paid',
-          orderStatus: 'Pending',
-          date: new Date().toISOString(),
-          address: `${orderData.address}, ${orderData.city}`,
-          paymentMethod: orderData.paymentMethod,
-          discountAmount: orderData.discountAmount,
-          shippingRate: orderData.shippingRate,
-        };
-
-        const { error: orderErr } = await supabase.from('orders').insert(rowToLower(newOrder));
-        if (orderErr) throw orderErr;
-
-        // Decrement stock in Supabase for each item
-        for (const item of orderData.items) {
-          const { data: p } = await supabase.from('products').select('*').or(`id.eq.${item.id},name.eq.${item.name}`).maybeSingle();
-          if (p) {
-            const camelP = rowToCamel(p);
-            const newStock = Math.max(0, camelP.stock - item.quantity);
-            let newStatus = camelP.status;
-            if (newStock === 0) {
-              newStatus = 'Out of Stock';
-              await db.createNotification({
-                type: 'stock',
-                title: 'Out of Stock Alert',
-                description: `${camelP.name} is now completely out of stock!`
-              });
-            } else if (newStock < camelP.minStock) {
-              await db.createNotification({
-                type: 'stock',
-                title: 'Low Stock Alert',
-                description: `${camelP.name} has only ${newStock} units remaining.`
-              });
-            }
-            await supabase.from('products').update(rowToLower({ stock: newStock, status: newStatus })).eq('id', camelP.id);
-          }
-        }
-
-        // Register Customer spendings
-        const { data: cust } = await supabase.from('customers').select('*').eq('email', orderData.email).maybeSingle();
-        if (cust) {
-          const camelCust = rowToCamel(cust);
-          await supabase.from('customers').update(rowToLower({
-            totalOrders: camelCust.totalOrders + 1,
-            totalSpend: camelCust.totalSpend + orderData.total,
-            phone: orderData.phone,
-            address: orderData.address,
-            city: orderData.city
-          })).eq('id', camelCust.id);
-        } else {
-          const { count: custCount } = await supabase.from('customers').select('*', { count: 'exact', head: true });
-          const custId = `CUST-${String((custCount || 0) + 1).padStart(3, '0')}`;
-          await supabase.from('customers').insert(rowToLower({
-            id: custId,
-            name: orderData.customerName,
-            email: orderData.email,
-            phone: orderData.phone,
-            address: orderData.address,
-            city: orderData.city,
-            totalOrders: 1,
-            totalSpend: orderData.total,
-            notes: orderData.notes || 'Added from web checkout',
-            status: 'Active'
-          }));
-        }
-
-        // Create Payment if already Paid
-        if (newOrder.paymentStatus === 'Paid') {
-          await db.createPayment({
-            orderId: orderNum,
-            method: orderData.paymentMethod,
-            amount: orderData.total,
-            status: 'Paid',
-            reference: `TXN-${Math.floor(1000000 + Math.random() * 9000000)}`
-          });
-        }
-
-        // Trigger new order notification
-        await db.createNotification({
-          type: 'order',
-          title: 'New Order Received',
-          description: `${orderNum} from ${orderData.customerName} — Rs. ${orderData.total.toLocaleString()}`
-        });
-
-        return newOrder;
-      } catch (err) {
-        console.error('Supabase createOrder error, falling back:', err);
-      }
-    }
-
-    // Fallback to Local Storage
+    // 1. Save locally immediately for instant 0ms order placement confirmation
     const orders = getStorage(KEYS.ORDERS, initialOrders);
     const orderNum = `ORD-2026-${String(orders.length + 1).padStart(3, '0')}`;
-    
+
     const newOrder = {
       id: orderNum,
       customer: orderData.customerName,
@@ -652,72 +551,88 @@ export const db = {
       discountAmount: orderData.discountAmount,
       shippingRate: orderData.shippingRate,
     };
+
     orders.unshift(newOrder);
     setStorage(KEYS.ORDERS, orders);
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('erha_orders_update'));
 
-    const products = getStorage(KEYS.PRODUCTS, initialProducts);
-    orderData.items.forEach((item) => {
-      const p = products.find((x) => x.id === item.id || x.name === item.name);
-      if (p) {
-        p.stock = Math.max(0, p.stock - item.quantity);
-        if (p.stock === 0) {
-          p.status = 'Out of Stock';
-          db.createNotification({
-            type: 'stock',
-            title: 'Out of Stock Alert',
-            description: `${p.name} is now completely out of stock!`
+    // 2. Perform background Supabase sync without blocking customer UI
+    if (isSupabaseConfigured && supabase) {
+      (async () => {
+        try {
+          const { count } = await supabase.from('orders').select('*', { count: 'exact', head: true });
+          if (count !== null) {
+            const realOrderNum = `ORD-2026-${String(count + 1).padStart(3, '0')}`;
+            newOrder.id = realOrderNum;
+          }
+
+          await supabase.from('orders').insert(rowToLower(newOrder));
+
+          // Decrement stock in Supabase for each item
+          for (const item of orderData.items) {
+            const { data: p } = await supabase.from('products').select('*').or(`id.eq.${item.id},name.eq.${item.name}`).maybeSingle();
+            if (p) {
+              const camelP = rowToCamel(p);
+              const newStock = Math.max(0, camelP.stock - item.quantity);
+              let newStatus = camelP.status;
+              if (newStock === 0) {
+                newStatus = 'Out of Stock';
+                await db.createNotification({
+                  type: 'stock',
+                  title: 'Out of Stock Alert',
+                  description: `${camelP.name} is now completely out of stock!`
+                });
+              } else if (newStock < camelP.minStock) {
+                await db.createNotification({
+                  type: 'stock',
+                  title: 'Low Stock Alert',
+                  description: `${camelP.name} has only ${newStock} units remaining.`
+                });
+              }
+              await supabase.from('products').update(rowToLower({ stock: newStock, status: newStatus })).eq('id', camelP.id);
+            }
+          }
+
+          // Register Customer spendings
+          const { data: cust } = await supabase.from('customers').select('*').eq('email', orderData.email).maybeSingle();
+          if (cust) {
+            const camelCust = rowToCamel(cust);
+            await supabase.from('customers').update(rowToLower({
+              totalOrders: camelCust.totalOrders + 1,
+              totalSpend: camelCust.totalSpend + orderData.total,
+              phone: orderData.phone,
+              address: orderData.address,
+              city: orderData.city
+            })).eq('id', camelCust.id);
+          } else {
+            const { count: custCount } = await supabase.from('customers').select('*', { count: 'exact', head: true });
+            const custId = `CUST-${String((custCount || 0) + 1).padStart(3, '0')}`;
+            await supabase.from('customers').insert(rowToLower({
+              id: custId,
+              name: orderData.customerName,
+              email: orderData.email,
+              phone: orderData.phone,
+              address: orderData.address,
+              city: orderData.city,
+              totalOrders: 1,
+              totalSpend: orderData.total,
+              notes: orderData.notes || 'Added from web checkout',
+              status: 'Active'
+            }));
+          }
+
+          // Create Notification
+          await db.createNotification({
+            type: 'order',
+            title: 'New Order Received',
+            description: `${newOrder.id} from ${orderData.customerName} — Rs. ${orderData.total.toLocaleString()}`
           });
-        } else if (p.stock < p.minStock) {
-          db.createNotification({
-            type: 'stock',
-            title: 'Low Stock Alert',
-            description: `${p.name} has only ${p.stock} units remaining.`
-          });
+        } catch (err) {
+          console.warn('Background order sync error:', err);
         }
-        db.saveProduct(p);
-      }
-    });
-
-    const customers = getStorage(KEYS.CUSTOMERS, initialCustomers);
-    const custIdx = customers.findIndex((x) => x.email.toLowerCase() === orderData.email.toLowerCase());
-    if (custIdx >= 0) {
-      customers[custIdx].totalOrders += 1;
-      customers[custIdx].totalSpend += orderData.total;
-      customers[custIdx].phone = orderData.phone;
-      customers[custIdx].address = orderData.address;
-      customers[custIdx].city = orderData.city;
-    } else {
-      customers.push({
-        id: `CUST-${String(customers.length + 1).padStart(3, '0')}`,
-        name: orderData.customerName,
-        email: orderData.email,
-        phone: orderData.phone,
-        address: orderData.address,
-        city: orderData.city,
-        totalOrders: 1,
-        totalSpend: orderData.total,
-        notes: orderData.notes || 'Added from web checkout',
-        status: 'Active',
-        created_at: new Date().toISOString()
-      });
+      })();
     }
-    setStorage(KEYS.CUSTOMERS, customers);
-
-    if (newOrder.paymentStatus === 'Paid') {
-      db.createPayment({
-        orderId: orderNum,
-        method: orderData.paymentMethod,
-        amount: orderData.total,
-        status: 'Paid',
-        reference: `TXN-${Math.floor(1000000 + Math.random() * 9000000)}`
-      });
-    }
-
-    db.createNotification({
-      type: 'order',
-      title: 'New Order Received',
-      description: `${orderNum} from ${orderData.customerName} — Rs. ${orderData.total.toLocaleString()}`
-    });
 
     return newOrder;
   },
