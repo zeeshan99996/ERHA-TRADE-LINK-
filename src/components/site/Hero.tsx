@@ -170,16 +170,35 @@ export function Hero({ products = [] }: HeroProps) {
     fadeTo((idx - 1 + pairs.length) % pairs.length);
   }, [pairs.length, idx, fadeTo]);
 
+  const touchStartX = useRef<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const diff = e.changedTouches[0].clientX - touchStartX.current;
+    if (diff > 35) {
+      goPrev();
+      resetTimer();
+    } else if (diff < -35) {
+      goNext();
+      resetTimer();
+    }
+    touchStartX.current = null;
+  };
+
   const resetTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
       setIdx((prev) => {
         const next = (prev + 1) % pairs.length;
         setVisible(false);
-        setTimeout(() => { setIdx(next); setVisible(true); }, 180);
+        setTimeout(() => { setIdx(next); setVisible(true); }, 250);
         return prev;
       });
-    }, 3500);
+    }, 6000);
   }, [pairs.length]);
 
   useEffect(() => {
@@ -210,15 +229,17 @@ export function Hero({ products = [] }: HeroProps) {
 
   return (
     <section
-      className="relative w-full border-b border-slate-200/60 overflow-hidden select-none"
-      style={{ height: "200px", background: palette.bg, transition: "background 0.4s ease" }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      className="relative w-full border-b border-slate-200/60 overflow-hidden select-none touch-pan-y"
+      style={{ height: "200px", background: palette.bg, transition: "background 0.5s ease" }}
     >
-      {/* Crossfade content — no white flash, pure opacity */}
+      {/* Crossfade content — ultra smooth 0.35s opacity */}
       <div
         className="absolute inset-0 flex items-center"
         style={{
           opacity: visible ? 1 : 0,
-          transition: "opacity 0.18s ease",
+          transition: "opacity 0.35s ease-in-out",
           willChange: "opacity",
         }}
       >
