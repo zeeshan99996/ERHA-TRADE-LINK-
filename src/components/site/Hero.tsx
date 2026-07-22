@@ -59,7 +59,7 @@ function ProductCard({ product, palette, side }: ProductCardProps) {
       style={{ flexDirection: side === "left" ? "row" : "row-reverse" }}
     >
       {/* Product Image — no background, pure PNG */}
-      <div className="shrink-0 flex items-center justify-center" style={{ width: "120px", height: "130px" }}>
+      <div className="shrink-0 flex items-center justify-center w-24 sm:w-32 h-24 sm:h-32">
         {img ? (
           <img
             src={img}
@@ -222,14 +222,14 @@ export function Hero({ products = [] }: HeroProps) {
           willChange: "opacity",
         }}
       >
-        <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 grid grid-cols-2 gap-3 sm:gap-6 h-full items-center">
-          {/* LEFT product: image + details */}
-          <div className="h-full flex items-center border-r border-slate-200/60 pr-3 sm:pr-6">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6 h-full items-center">
+          {/* LEFT product: single clean product card on mobile */}
+          <div className="h-full flex items-center justify-center sm:justify-start sm:border-r sm:border-slate-200/60 pr-0 sm:pr-6">
             <ProductCard product={left} palette={palette} side="left" />
           </div>
 
-          {/* RIGHT product: image + details */}
-          <div className="h-full flex items-center pl-0">
+          {/* RIGHT product: second product card on tablet/desktop only */}
+          <div className="hidden sm:flex h-full items-center pl-0">
             <ProductCard product={right} palette={palette} side="right" />
           </div>
         </div>
