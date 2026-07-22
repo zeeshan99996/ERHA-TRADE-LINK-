@@ -347,27 +347,34 @@ export const db = {
     return cached;
   },
   getProduct: async (id: string): Promise<any | null> => {
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { data, error } = await withRetry(() => supabase!.from('products').select('*').eq('id', id).maybeSingle());
-        if (!error && data) {
-          const camelItem = rowToCamel(data);
-          const products = getStorage(KEYS.PRODUCTS, initialProducts);
-          const idx = products.findIndex((x) => String(x.id).trim().toLowerCase() === String(id).trim().toLowerCase());
-          if (idx >= 0) {
-            products[idx] = { ...products[idx], ...camelItem };
-          } else {
-            products.push(camelItem);
-          }
-          setStorage(KEYS.PRODUCTS, products);
-          return camelItem;
-        }
-      } catch (e) {
-        console.error("Supabase getProduct error, falling back to cache:", e);
-      }
-    }
     const products = getStorage(KEYS.PRODUCTS, initialProducts);
-    return products.find((p: any) => p && p.id && String(p.id).trim().toLowerCase() === String(id).trim().toLowerCase()) || null;
+    const cachedItem = products.find((p: any) => p && p.id && String(p.id).trim().toLowerCase() === String(id).trim().toLowerCase()) || null;
+
+    if (isSupabaseConfigured && supabase) {
+      supabase
+        .from('products')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle()
+        .then(({ data, error }) => {
+          if (!error && data) {
+            const camelItem = rowToCamel(data);
+            const list = getStorage(KEYS.PRODUCTS, initialProducts);
+            const idx = list.findIndex((x: any) => String(x.id).trim().toLowerCase() === String(id).trim().toLowerCase());
+            if (idx >= 0) {
+              list[idx] = { ...list[idx], ...camelItem };
+            } else {
+              list.push(camelItem);
+            }
+            setStorage(KEYS.PRODUCTS, list);
+            window.dispatchEvent(new Event('storage'));
+            window.dispatchEvent(new Event('erha_products_update'));
+          }
+        })
+        .catch((e) => console.warn("Supabase single product background sync:", e));
+    }
+
+    return cachedItem;
   },
   saveProduct: async (p: any): Promise<void> => {
     // 1. Write to localStorage immediately (optimistic update)
