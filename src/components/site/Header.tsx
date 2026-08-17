@@ -81,8 +81,33 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-xl">
-      <div className="hidden gradient-brand px-4 py-2 text-center text-xs font-medium text-white sm:block">
-        🎉 Free delivery across Pakistan on orders over Rs. 2,999
+      {/* Top Ticker Banner (Right to Left Continuous Motion) */}
+      <div className="relative w-full overflow-hidden gradient-brand py-2 text-white select-none">
+        <style dangerouslySetInnerHTML={{__html: `
+          @keyframes topHeaderTicker {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-50%, 0, 0); }
+          }
+          .top-header-ticker-track {
+            display: flex;
+            width: max-content;
+            will-change: transform;
+            animation: topHeaderTicker 20s linear infinite;
+          }
+          .top-header-ticker-track:hover {
+            animation-play-state: paused;
+          }
+        `}} />
+        <div className="flex w-full overflow-hidden">
+          <div className="top-header-ticker-track flex whitespace-nowrap">
+            {[...Array(8)].map((_, i) => (
+              <span key={i} className="inline-flex items-center px-6 text-xs font-semibold tracking-wide">
+                🎉 Free delivery across Pakistan on orders over Rs. 2,999
+                <span className="mx-6 opacity-40">•</span>
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
         {/* Left: Logo */}
