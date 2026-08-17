@@ -41,10 +41,11 @@ export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const url = new URL(request.url);
-      // Redirect all production domains to erhatradelinkinternational.com
+      // Redirect external HTTP hostnames to custom domain, while allowing local and vercel.app preview URLs
       if (
         url.hostname !== "erhatradelinkinternational.com" &&
         url.hostname !== "www.erhatradelinkinternational.com" &&
+        !url.hostname.includes("vercel.app") &&
         !url.hostname.includes("localhost") &&
         !url.hostname.includes("127.0.0.1") &&
         !url.hostname.endsWith(".local")
