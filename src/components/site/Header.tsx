@@ -82,7 +82,7 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-xl">
       <div className="hidden gradient-brand px-4 py-2 text-center text-xs font-medium text-white sm:block">
-        🎉 Free delivery across Pakistan on orders over Rs. 2,999 • Use code <span className="font-bold">ERHA10</span> for 10% off
+        🎉 Free delivery across Pakistan on orders over Rs. 2,999
       </div>
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
         {/* Left: Logo */}
