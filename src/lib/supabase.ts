@@ -1,6 +1,36 @@
 import { createClient } from '@supabase/supabase-js';
 import pzxImgUrl from "@/assets/pzx_v91_power_bank.jpg";
-
+import {
+  fetchProductsServerFn,
+  saveProductServerFn,
+  deleteProductServerFn,
+  fetchCategoriesServerFn,
+  saveCategoryServerFn,
+  deleteCategoryServerFn,
+  fetchOrdersServerFn,
+  createOrderServerFn,
+  deleteOrderServerFn,
+  clearAllOrdersServerFn,
+  fetchCustomersServerFn,
+  saveCustomerServerFn,
+  deleteCustomerServerFn,
+  fetchCouponsServerFn,
+  saveCouponServerFn,
+  deleteCouponServerFn,
+  fetchExpensesServerFn,
+  saveExpenseServerFn,
+  deleteExpenseServerFn,
+  fetchPaymentsServerFn,
+  savePaymentServerFn,
+  deletePaymentServerFn,
+  fetchNotificationsServerFn,
+  addNotificationServerFn,
+  markNotificationReadServerFn,
+  fetchAdminsServerFn,
+  verifyAdminServerFn,
+  saveAdminServerFn,
+  deleteAdminServerFn,
+} from './db-server-fns';
 
 // Read Supabase environment variables from import.meta.env
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
@@ -22,9 +52,6 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 // ─── LOCAL STORAGE DATABASE FALLBACK (SINGLE SOURCE OF TRUTH) ──────────────────
-// This ensures that even without active Supabase credentials, the store and dashboard
-// operate with complete state sync, allowing real-time inventory deductions, order tracking, and CRUD.
-
 const KEYS = {
   PRODUCTS: 'erha_products_v5',
   CATEGORIES: 'erha_categories_v2',
@@ -164,7 +191,6 @@ const initialProducts: any[] = [
   }
 ];
 
-
 const initialCategories = [
   { id: 'cat1', name: 'Ultra Compact', slug: 'ultra-compact', parentId: null, imageUrl: 'https://images.unsplash.com/photo-1592890288564-76628a30a657?w=400' },
   { id: 'cat2', name: 'High Capacity', slug: 'high-capacity', parentId: null, imageUrl: 'https://images.unsplash.com/photo-1583394838336-acd977736f90?w=400' },
@@ -208,7 +234,6 @@ const initialExpenses: any[] = [];
 const initialPayments: any[] = [];
 const initialNotifications: any[] = [];
 
-// Helper to load/save from localStorage
 function getStorage<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
   const val = localStorage.getItem(key);
@@ -226,12 +251,10 @@ function getStorage<T>(key: string, fallback: T): T {
 function setStorage<T>(key: string, val: T) {
   if (typeof window !== 'undefined') {
     localStorage.setItem(key, JSON.stringify(val));
-    // Emit dynamic storage event to sync windows
     window.dispatchEvent(new Event('storage'));
   }
 }
 
-// ─── POSTGRES LOWERCASE FIELD MAPPER HELPERS ────────────────────────────────
 const LOWER_TO_CAMEL: Record<string, string> = {
   saleprice: 'salePrice',
   minstock: 'minStock',
@@ -280,233 +303,163 @@ function rowToLower(row: any): any {
   return n;
 }
 
-function isNetworkError(error: any): boolean {
-  if (!error) return false;
-  const msg = String(error.message || '').toLowerCase();
-  return (
-    msg.includes('fetch') ||
-    msg.includes('network') ||
-    msg.includes('connection') ||
-    msg.includes('load failed') ||
-    msg.includes('failed to fetch') ||
-    msg.includes('socket') ||
-    msg.includes('paused') ||
-    msg.includes('abort') ||
-    msg.includes('unreachable')
-  );
-}
-
-async function withRetry<T extends { error?: any }>(
-  fn: () => Promise<T>,
-  retries = 3,
-  delay = 1000
-): Promise<T> {
-  try {
-    const result = await fn();
-    if (result.error && isNetworkError(result.error) && retries > 0) {
-      console.warn(`Supabase network error, retrying in ${delay}ms... (Remaining: ${retries})`, result.error);
-      await new Promise((resolve) => setTimeout(resolve, delay));
-      return withRetry(fn, retries - 1, delay * 1.5);
-    }
-    return result;
-  } catch (err: any) {
-    if (retries > 0 && isNetworkError(err)) {
-      console.warn(`Supabase network exception, retrying in ${delay}ms... (Remaining: ${retries})`, err);
-      await new Promise((resolve) => setTimeout(resolve, delay));
-      return withRetry(fn, retries - 1, delay * 1.5);
-    }
-    throw err;
-  }
-}
-
 export const db = {
-  // PRODUCTS
+  // ─── PRODUCTS ─────────────────────────────────────────────────────────────
   getProducts: async (): Promise<any[]> => {
     const cached = getStorage(KEYS.PRODUCTS, initialProducts);
+    
+    // Priority 1: Hostinger MySQL via Server Function
+    try {
+      const mysqlRes = await fetchProductsServerFn();
+      if (mysqlRes.success && mysqlRes.data && mysqlRes.data.length > 0) {
+        setStorage(KEYS.PRODUCTS, mysqlRes.data);
+        return mysqlRes.data;
+      }
+    } catch (e) {
+      console.warn("Hostinger MySQL products sync:", e);
+    }
 
+    // Priority 2: Supabase Fallback
     if (isSupabaseConfigured && supabase) {
       supabase
         .from('products')
         .select('*')
         .order('created_at', { ascending: false })
-        .then(async ({ data, error }) => {
-          if (!error && data) {
-            const camelData = rowsToCamel(data);
-            if (data.length > 0) {
-              setStorage(KEYS.PRODUCTS, camelData);
-              window.dispatchEvent(new Event('storage'));
-            } else if (data.length === 0 && cached.length > 0) {
-              const rows = cached.map((p: any) => rowToLower(p));
-              await supabase!.from('products').upsert(rows, { onConflict: 'id' });
-            }
+        .then(({ data, error }) => {
+          if (!error && data && data.length > 0) {
+            setStorage(KEYS.PRODUCTS, rowsToCamel(data));
           }
         })
         .catch((e) => console.warn("Supabase background sync:", e));
     }
 
-    return cached;
+    return getStorage(KEYS.PRODUCTS, cached);
   },
+
   getProduct: async (id: string): Promise<any | null> => {
-    const products = getStorage(KEYS.PRODUCTS, initialProducts);
-    const cachedItem = products.find((p: any) => p && p.id && String(p.id).trim().toLowerCase() === String(id).trim().toLowerCase()) || null;
-
-    if (isSupabaseConfigured && supabase) {
-      supabase
-        .from('products')
-        .select('*')
-        .eq('id', id)
-        .maybeSingle()
-        .then(({ data, error }) => {
-          if (!error && data) {
-            const camelItem = rowToCamel(data);
-            const list = getStorage(KEYS.PRODUCTS, initialProducts);
-            const idx = list.findIndex((x: any) => String(x.id).trim().toLowerCase() === String(id).trim().toLowerCase());
-            if (idx >= 0) {
-              list[idx] = { ...list[idx], ...camelItem };
-            } else {
-              list.push(camelItem);
-            }
-            setStorage(KEYS.PRODUCTS, list);
-            window.dispatchEvent(new Event('storage'));
-            window.dispatchEvent(new Event('erha_products_update'));
-          }
-        })
-        .catch((e) => console.warn("Supabase single product background sync:", e));
-    }
-
-    return cachedItem;
+    const products = await db.getProducts();
+    return products.find((p: any) => p && p.id && String(p.id).trim().toLowerCase() === String(id).trim().toLowerCase()) || null;
   },
+
   saveProduct: async (p: any): Promise<void> => {
-    // 1. Write to localStorage immediately (optimistic update)
     const products = getStorage(KEYS.PRODUCTS, initialProducts);
     const idx = products.findIndex((x) => x.id === p.id);
-    if (idx >= 0) {
-      products[idx] = { ...products[idx], ...p };
-    } else {
-      products.push(p);
-    }
+    if (idx >= 0) products[idx] = { ...products[idx], ...p };
+    else products.push(p);
     setStorage(KEYS.PRODUCTS, products);
 
-    // 2. Perform background write to Supabase
+    // Save to Hostinger MySQL
+    try {
+      const mysqlRes = await saveProductServerFn({ data: p });
+      if (mysqlRes.success) return;
+    } catch (e) {
+      console.warn("Hostinger MySQL saveProduct exception:", e);
+    }
+
+    // Fallback to Supabase
     if (isSupabaseConfigured && supabase) {
-      try {
-        const { error } = await withRetry(() => supabase!.from('products').upsert(rowToLower(p)));
-        if (error) {
-          console.error('Supabase saveProduct error:', error);
-          throw new Error(error.message);
-        }
-      } catch (err: any) {
-        console.error('Supabase saveProduct exception:', err);
-        throw err;
-      }
+      await supabase.from('products').upsert(rowToLower(p));
     }
   },
+
   deleteProduct: async (id: string): Promise<void> => {
     const products = getStorage(KEYS.PRODUCTS, []);
     const updated = products.filter((x: any) => String(x.id) !== String(id));
     setStorage(KEYS.PRODUCTS, updated);
 
-    if (isSupabaseConfigured && supabase) {
-      try {
-        await supabase.from('products').delete().eq('id', id);
-      } catch (err: any) {
-        console.error('Supabase deleteProduct exception:', err);
-      }
+    // Hostinger MySQL
+    try {
+      await deleteProductServerFn({ data: { id } });
+    } catch (e) {
+      console.warn("Hostinger MySQL deleteProduct exception:", e);
     }
 
-    window.dispatchEvent(new Event('storage'));
-    window.dispatchEvent(new Event('erha_products_update'));
-  },
-
-  deleteOrder: async (id: string): Promise<void> => {
-    const orders = getStorage(KEYS.ORDERS, []);
-    const updated = orders.filter((x: any) => String(x.id) !== String(id));
-    setStorage(KEYS.ORDERS, updated);
-
+    // Supabase
     if (isSupabaseConfigured && supabase) {
-      try {
-        await supabase.from('orders').delete().eq('id', id);
-      } catch (err: any) {
-        console.error('Supabase deleteOrder exception:', err);
-      }
+      await supabase.from('products').delete().eq('id', id);
     }
 
-    window.dispatchEvent(new Event('storage'));
-    window.dispatchEvent(new Event('erha_orders_update'));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new Event('erha_products_update'));
+    }
   },
 
-  // CATEGORIES
+  // ─── CATEGORIES ────────────────────────────────────────────────────────────
   getCategories: async (): Promise<any[]> => {
-    const val = getStorage(KEYS.CATEGORIES, initialCategories);
-    if (isSupabaseConfigured && supabase) {
-      (async () => {
-        try {
-          const { data, error } = await withRetry(() => supabase!.from('categories').select('*').order('created_at', { ascending: true }));
-          if (!error && data) {
-            const camelData = rowsToCamel(data);
-            if (data.length > 0) {
-              setStorage(KEYS.CATEGORIES, camelData);
-            } else if (data.length === 0 && val.length > 0) {
-              console.log("Supabase empty, seeding with local categories...");
-              for (const c of val) {
-                await withRetry(() => supabase!.from('categories').upsert(rowToLower(c)));
-              }
-              const { data: refetched } = await withRetry(() => supabase!.from('categories').select('*').order('created_at', { ascending: true }));
-              if (refetched) setStorage(KEYS.CATEGORIES, rowsToCamel(refetched));
-            }
-          }
-        } catch (e) {
-          console.error("Background Supabase getCategories error:", e);
-        }
-      })();
+    const cached = getStorage(KEYS.CATEGORIES, initialCategories);
+
+    try {
+      const mysqlRes = await fetchCategoriesServerFn();
+      if (mysqlRes.success && mysqlRes.data && mysqlRes.data.length > 0) {
+        setStorage(KEYS.CATEGORIES, mysqlRes.data);
+        return mysqlRes.data;
+      }
+    } catch (e) {
+      console.warn("Hostinger MySQL getCategories error:", e);
     }
-    return val;
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data, error } = await supabase.from('categories').select('*').order('created_at', { ascending: true });
+        if (!error && data && data.length > 0) {
+          setStorage(KEYS.CATEGORIES, rowsToCamel(data));
+        }
+      } catch (e) {
+        console.warn("Supabase getCategories error:", e);
+      }
+    }
+
+    return getStorage(KEYS.CATEGORIES, cached);
   },
+
   saveCategory: async (c: any): Promise<void> => {
     const cats = getStorage(KEYS.CATEGORIES, initialCategories);
     const idx = cats.findIndex((x) => x.id === c.id);
-    if (idx >= 0) {
-      cats[idx] = c;
-    } else {
-      cats.push(c);
-    }
+    if (idx >= 0) cats[idx] = c;
+    else cats.push(c);
     setStorage(KEYS.CATEGORIES, cats);
 
+    try {
+      await saveCategoryServerFn({ data: c });
+    } catch (e) {
+      console.warn("Hostinger MySQL saveCategory exception:", e);
+    }
+
     if (isSupabaseConfigured && supabase) {
-      try {
-        const { error } = await withRetry(() => supabase!.from('categories').upsert(rowToLower(c)));
-        if (error) {
-          console.error('Supabase saveCategory error:', error);
-          throw new Error(error.message);
-        }
-      } catch (err: any) {
-        console.error('Supabase saveCategory exception:', err);
-        throw err;
-      }
+      await supabase.from('categories').upsert(rowToLower(c));
     }
   },
+
   deleteCategory: async (id: string): Promise<void> => {
     const cats = getStorage(KEYS.CATEGORIES, initialCategories);
     const updated = cats.filter((x) => x.id !== id);
     setStorage(KEYS.CATEGORIES, updated);
 
+    try {
+      await deleteCategoryServerFn({ data: { id } });
+    } catch (e) {
+      console.warn("Hostinger MySQL deleteCategory exception:", e);
+    }
+
     if (isSupabaseConfigured && supabase) {
-      try {
-        const { error } = await withRetry(() => supabase!.from('categories').delete().eq('id', id));
-        if (error) {
-          console.error('Supabase deleteCategory error:', error);
-          throw new Error(error.message);
-        }
-      } catch (err: any) {
-        console.error('Supabase deleteCategory exception:', err);
-        throw err;
-      }
+      await supabase.from('categories').delete().eq('id', id);
     }
   },
 
-  // ORDERS
+  // ─── ORDERS ────────────────────────────────────────────────────────────────
   getOrders: async (): Promise<any[]> => {
     const cached = getStorage(KEYS.ORDERS, initialOrders);
+
+    try {
+      const mysqlRes = await fetchOrdersServerFn();
+      if (mysqlRes.success && mysqlRes.data) {
+        setStorage(KEYS.ORDERS, mysqlRes.data);
+        return mysqlRes.data;
+      }
+    } catch (e) {
+      console.warn("Hostinger MySQL getOrders error:", e);
+    }
 
     if (isSupabaseConfigured && supabase) {
       supabase
@@ -515,16 +468,15 @@ export const db = {
         .order('created_at', { ascending: false })
         .then(({ data, error }) => {
           if (!error && data) {
-            const camelData = rowsToCamel(data);
-            setStorage(KEYS.ORDERS, camelData);
-            window.dispatchEvent(new Event('storage'));
+            setStorage(KEYS.ORDERS, rowsToCamel(data));
           }
         })
         .catch((e) => console.warn("Supabase orders background sync:", e));
     }
 
-    return cached;
+    return getStorage(KEYS.ORDERS, cached);
   },
+
   createOrder: async (orderData: {
     customerName: string;
     email: string;
@@ -539,7 +491,6 @@ export const db = {
     total: number;
     notes?: string;
   }): Promise<any> => {
-    // 1. Save locally immediately for instant 0ms order placement confirmation
     const orders = getStorage(KEYS.ORDERS, initialOrders);
     const orderNum = `ORD-2026-${String(orders.length + 1).padStart(3, '0')}`;
 
@@ -561,439 +512,416 @@ export const db = {
 
     orders.unshift(newOrder);
     setStorage(KEYS.ORDERS, orders);
-    window.dispatchEvent(new Event('storage'));
-    window.dispatchEvent(new Event('erha_orders_update'));
 
-    // Create immediate local notification for zero-latency admin alert
-    const isWhatsApp = orderData.paymentMethod?.toLowerCase().includes('whatsapp');
-    (async () => {
-      try {
-        await db.createNotification({
-          type: 'order',
-          title: isWhatsApp ? 'New WhatsApp Order Received' : 'New Order Received',
-          description: `${newOrder.id} from ${orderData.customerName} (${isWhatsApp ? 'WhatsApp COD' : orderData.paymentMethod}) — Rs. ${orderData.total.toLocaleString()}`
-        });
-      } catch (e) {
-        console.warn('Local notification error:', e);
-      }
-    })();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new Event('erha_orders_update'));
+    }
 
-    // 2. Perform background Supabase sync without blocking customer UI
-    if (isSupabaseConfigured && supabase) {
-      (async () => {
-        try {
-          const { count } = await supabase.from('orders').select('*', { count: 'exact', head: true });
-          if (count !== null) {
-            const realOrderNum = `ORD-2026-${String(count + 1).padStart(3, '0')}`;
-            newOrder.id = realOrderNum;
-          }
-
-          await supabase.from('orders').insert(rowToLower(newOrder));
-
-          // Decrement stock in Supabase for each item
-          for (const item of orderData.items) {
-            const { data: p } = await supabase.from('products').select('*').or(`id.eq.${item.id},name.eq.${item.name}`).maybeSingle();
-            if (p) {
-              const camelP = rowToCamel(p);
-              const newStock = Math.max(0, camelP.stock - item.quantity);
-              let newStatus = camelP.status;
-              if (newStock === 0) {
-                newStatus = 'Out of Stock';
-                await db.createNotification({
-                  type: 'stock',
-                  title: 'Out of Stock Alert',
-                  description: `${camelP.name} is now completely out of stock!`
-                });
-              } else if (newStock < camelP.minStock) {
-                await db.createNotification({
-                  type: 'stock',
-                  title: 'Low Stock Alert',
-                  description: `${camelP.name} has only ${newStock} units remaining.`
-                });
-              }
-              await supabase.from('products').update(rowToLower({ stock: newStock, status: newStatus })).eq('id', camelP.id);
-            }
-          }
-
-          // Register Customer spendings
-          const { data: cust } = await supabase.from('customers').select('*').eq('email', orderData.email).maybeSingle();
-          if (cust) {
-            const camelCust = rowToCamel(cust);
-            await supabase.from('customers').update(rowToLower({
-              totalOrders: camelCust.totalOrders + 1,
-              totalSpend: camelCust.totalSpend + orderData.total,
-              phone: orderData.phone,
-              address: orderData.address,
-              city: orderData.city
-            })).eq('id', camelCust.id);
-          } else {
-            const { count: custCount } = await supabase.from('customers').select('*', { count: 'exact', head: true });
-            const custId = `CUST-${String((custCount || 0) + 1).padStart(3, '0')}`;
-            await supabase.from('customers').insert(rowToLower({
-              id: custId,
-              name: orderData.customerName,
-              email: orderData.email,
-              phone: orderData.phone,
-              address: orderData.address,
-              city: orderData.city,
-              totalOrders: 1,
-              totalSpend: orderData.total,
-              notes: orderData.notes || 'Added from web checkout',
-              status: 'Active'
-            }));
-          }
-
-          // Create Notification
-          await db.createNotification({
-            type: 'order',
-            title: 'New Order Received',
-            description: `${newOrder.id} from ${orderData.customerName} — Rs. ${orderData.total.toLocaleString()}`
-          });
-        } catch (err) {
-          console.warn('Background order sync error:', err);
+    // Hostinger MySQL Order Placement
+    try {
+      await createOrderServerFn({ data: newOrder });
+      
+      // Save/update customer in Hostinger MySQL
+      const custId = `CUST-${Date.now()}`;
+      await saveCustomerServerFn({
+        data: {
+          id: custId,
+          name: orderData.customerName,
+          email: orderData.email,
+          phone: orderData.phone,
+          address: orderData.address,
+          city: orderData.city,
+          totalOrders: 1,
+          totalSpend: orderData.total,
+          notes: orderData.notes || 'Added from web checkout',
+          status: 'Active'
         }
-      })();
+      });
+    } catch (e) {
+      console.warn("Hostinger MySQL createOrder exception:", e);
+    }
+
+    // Supabase Fallback
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('orders').insert(rowToLower(newOrder)).then(() => {}).catch(() => {});
     }
 
     return newOrder;
   },
+
   updateOrderStatus: async (id: string, status: string): Promise<void> => {
-    if (isSupabaseConfigured && supabase) {
-      const { error } = await supabase.from('orders').update(rowToLower({ orderStatus: status })).eq('id', id);
-      if (!error) return;
-      console.error('Supabase updateOrderStatus error:', error);
-    }
     const orders = getStorage(KEYS.ORDERS, initialOrders);
     const idx = orders.findIndex((x) => x.id === id);
     if (idx >= 0) {
       orders[idx].orderStatus = status;
       setStorage(KEYS.ORDERS, orders);
-    }
-  },
-  updateOrderPaymentStatus: async (id: string, payStatus: string): Promise<void> => {
-    if (isSupabaseConfigured && supabase) {
       try {
-        const { error } = await supabase.from('orders').update(rowToLower({ paymentStatus: payStatus })).eq('id', id);
-        if (error) throw error;
-
-        const { data: order } = await supabase.from('orders').select('*').eq('id', id).maybeSingle();
-        if (order) {
-          const camelOrder = rowToCamel(order);
-          const { data: pmt } = await supabase.from('payments').select('*').eq('orderid', id).maybeSingle();
-          if (pmt) {
-            await supabase.from('payments').update(rowToLower({ status: payStatus })).eq('orderid', id);
-          } else if (payStatus === 'Paid') {
-            await db.createPayment({
-              orderId: id,
-              method: camelOrder.paymentMethod || 'COD',
-              amount: camelOrder.total || 0,
-              status: 'Paid',
-              reference: `TXN-${Math.floor(1000000 + Math.random() * 9000000)}`
-            });
-          }
-        }
-        return;
-      } catch (err) {
-        console.error('Supabase updateOrderPaymentStatus error, falling back:', err);
+        await createOrderServerFn({ data: orders[idx] });
+      } catch (e) {
+        console.warn("Hostinger MySQL updateOrderStatus error:", e);
       }
     }
+
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('orders').update(rowToLower({ orderStatus: status })).eq('id', id);
+    }
+  },
+
+  updateOrderPaymentStatus: async (id: string, payStatus: string): Promise<void> => {
     const orders = getStorage(KEYS.ORDERS, initialOrders);
     const idx = orders.findIndex((x) => x.id === id);
     if (idx >= 0) {
-      const order = orders[idx];
-      order.paymentStatus = payStatus;
+      orders[idx].paymentStatus = payStatus;
       setStorage(KEYS.ORDERS, orders);
-
-      const payments = getStorage(KEYS.PAYMENTS, initialPayments);
-      const pIdx = payments.findIndex((p) => p.orderId === id);
-      if (pIdx >= 0) {
-        payments[pIdx].status = payStatus;
-        setStorage(KEYS.PAYMENTS, payments);
-      } else if (payStatus === 'Paid') {
-        db.createPayment({
-          orderId: id,
-          method: order.paymentMethod || 'COD',
-          amount: order.total || 0,
-          status: 'Paid',
-          reference: `TXN-${Math.floor(1000000 + Math.random() * 9000000)}`
-        });
+      try {
+        await createOrderServerFn({ data: orders[idx] });
+      } catch (e) {
+        console.warn("Hostinger MySQL updateOrderPaymentStatus error:", e);
       }
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('orders').update(rowToLower({ paymentStatus: payStatus })).eq('id', id);
     }
   },
 
-  // CUSTOMERS
+  deleteOrder: async (id: string): Promise<void> => {
+    const orders = getStorage(KEYS.ORDERS, []);
+    const updated = orders.filter((x: any) => String(x.id) !== String(id));
+    setStorage(KEYS.ORDERS, updated);
+
+    try {
+      await deleteOrderServerFn({ data: { id } });
+    } catch (e) {
+      console.warn("Hostinger MySQL deleteOrder error:", e);
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('orders').delete().eq('id', id);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new Event('erha_orders_update'));
+    }
+  },
+
+  // ─── CUSTOMERS ─────────────────────────────────────────────────────────────
   getCustomers: async (): Promise<any[]> => {
+    const cached = getStorage(KEYS.CUSTOMERS, initialCustomers);
+
+    try {
+      const mysqlRes = await fetchCustomersServerFn();
+      if (mysqlRes.success && mysqlRes.data) {
+        setStorage(KEYS.CUSTOMERS, mysqlRes.data);
+        return mysqlRes.data;
+      }
+    } catch (e) {
+      console.warn("Hostinger MySQL getCustomers error:", e);
+    }
+
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase.from('customers').select('*').order('created_at', { ascending: false });
       if (!error && data) return rowsToCamel(data);
-      console.error('Supabase getCustomers error:', error);
     }
-    return getStorage(KEYS.CUSTOMERS, initialCustomers);
+
+    return cached;
   },
+
   saveCustomer: async (c: any): Promise<void> => {
     const custs = getStorage(KEYS.CUSTOMERS, initialCustomers);
     const idx = custs.findIndex((x) => x.id === c.id);
-    if (idx >= 0) {
-      custs[idx] = c;
-    } else {
-      custs.push(c);
-    }
+    if (idx >= 0) custs[idx] = c;
+    else custs.push(c);
     setStorage(KEYS.CUSTOMERS, custs);
 
+    try {
+      await saveCustomerServerFn({ data: c });
+    } catch (e) {
+      console.warn("Hostinger MySQL saveCustomer exception:", e);
+    }
+
     if (isSupabaseConfigured && supabase) {
-      try {
-        const { error } = await supabase.from('customers').upsert(rowToLower(c));
-        if (error) {
-          console.error('Supabase saveCustomer error:', error);
-          throw new Error(error.message);
-        }
-      } catch (err: any) {
-        console.error('Supabase saveCustomer exception:', err);
-        throw err;
-      }
+      await supabase.from('customers').upsert(rowToLower(c));
     }
   },
 
-  // COUPONS
+  deleteCustomer: async (id: string): Promise<void> => {
+    const custs = getStorage(KEYS.CUSTOMERS, []);
+    const updated = custs.filter((x: any) => String(x.id) !== String(id));
+    setStorage(KEYS.CUSTOMERS, updated);
+
+    try {
+      await deleteCustomerServerFn({ data: { id } });
+    } catch (e) {
+      console.warn("Hostinger MySQL deleteCustomer exception:", e);
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('customers').delete().eq('id', id);
+    }
+  },
+
+  // ─── COUPONS ───────────────────────────────────────────────────────────────
   getCoupons: async (): Promise<any[]> => {
+    const cached = getStorage(KEYS.COUPONS, initialCoupons);
+
+    try {
+      const mysqlRes = await fetchCouponsServerFn();
+      if (mysqlRes.success && mysqlRes.data) {
+        setStorage(KEYS.COUPONS, mysqlRes.data);
+        return mysqlRes.data;
+      }
+    } catch (e) {
+      console.warn("Hostinger MySQL getCoupons error:", e);
+    }
+
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase.from('coupons').select('*').order('created_at', { ascending: false });
       if (!error && data) return rowsToCamel(data);
-      console.error('Supabase getCoupons error:', error);
     }
-    return getStorage(KEYS.COUPONS, initialCoupons);
+
+    return cached;
   },
+
   saveCoupon: async (c: any): Promise<void> => {
     const coupons = getStorage(KEYS.COUPONS, initialCoupons);
     const idx = coupons.findIndex((x) => x.id === c.id);
-    if (idx >= 0) {
-      coupons[idx] = c;
-    } else {
-      coupons.push(c);
-    }
+    if (idx >= 0) coupons[idx] = c;
+    else coupons.push(c);
     setStorage(KEYS.COUPONS, coupons);
 
+    try {
+      await saveCouponServerFn({ data: c });
+    } catch (e) {
+      console.warn("Hostinger MySQL saveCoupon exception:", e);
+    }
+
     if (isSupabaseConfigured && supabase) {
-      try {
-        const { error } = await supabase.from('coupons').upsert(rowToLower(c));
-        if (error) {
-          console.error('Supabase saveCoupon error:', error);
-          throw new Error(error.message);
-        }
-      } catch (err: any) {
-        console.error('Supabase saveCoupon exception:', err);
-        throw err;
-      }
+      await supabase.from('coupons').upsert(rowToLower(c));
     }
   },
+
   deleteCoupon: async (id: string): Promise<void> => {
     const coupons = getStorage(KEYS.COUPONS, initialCoupons);
     const updated = coupons.filter((x) => x.id !== id);
     setStorage(KEYS.COUPONS, updated);
 
+    try {
+      await deleteCouponServerFn({ data: { id } });
+    } catch (e) {
+      console.warn("Hostinger MySQL deleteCoupon exception:", e);
+    }
+
     if (isSupabaseConfigured && supabase) {
-      try {
-        const { error } = await supabase.from('coupons').delete().eq('id', id);
-        if (error) {
-          console.error('Supabase deleteCoupon error:', error);
-          throw new Error(error.message);
-        }
-      } catch (err: any) {
-        console.error('Supabase deleteCoupon exception:', err);
-        throw err;
-      }
+      await supabase.from('coupons').delete().eq('id', id);
     }
   },
+
   validateCoupon: async (code: string, orderAmount: number): Promise<{ valid: boolean; coupon?: any; message?: string }> => {
+    const coupons = await db.getCoupons();
     const codeUpper = code.toUpperCase().trim();
-    if (isSupabaseConfigured && supabase) {
-      const { data: c, error } = await supabase.from('coupons').select('*').eq('code', codeUpper).eq('status', 'Active').maybeSingle();
-      if (!error && c) {
-        const camelC = rowToCamel(c);
-        if (new Date(camelC.expiry) < new Date()) {
-          return { valid: false, message: 'This coupon has expired.' };
-        }
-        if (orderAmount < camelC.minOrder) {
-          return { valid: false, message: `Minimum order amount of Rs. ${camelC.minOrder.toLocaleString()} required.` };
-        }
-        if (camelC.maxUsage && camelC.usageCount >= camelC.maxUsage) {
-          return { valid: false, message: 'This coupon usage limit has been reached.' };
-        }
-        return { valid: true, coupon: camelC };
-      }
-      return { valid: false, message: 'Invalid or inactive discount coupon code.' };
-    }
-    const coupons = getStorage(KEYS.COUPONS, initialCoupons);
-    const c = coupons.find((x) => x.code.toUpperCase() === codeUpper && x.status === 'Active');
+    const c = coupons.find((x) => String(x.code).toUpperCase() === codeUpper && x.status === 'Active');
+    
     if (!c) return { valid: false, message: 'Invalid or inactive discount coupon code.' };
     if (new Date(c.expiry) < new Date()) {
       return { valid: false, message: 'This coupon has expired.' };
     }
-    if (orderAmount < c.minOrder) {
-      return { valid: false, message: `Minimum order amount of Rs. ${c.minOrder.toLocaleString()} required.` };
+    if (orderAmount < (c.minOrder || 0)) {
+      return { valid: false, message: `Minimum order amount of Rs. ${Number(c.minOrder).toLocaleString()} required.` };
     }
-    if (c.maxUsage && c.usageCount >= c.maxUsage) {
+    if (c.maxUsage && (c.usageCount || 0) >= c.maxUsage) {
       return { valid: false, message: 'This coupon usage limit has been reached.' };
     }
     return { valid: true, coupon: c };
   },
 
-  // EXPENSES
+  // ─── EXPENSES ──────────────────────────────────────────────────────────────
   getExpenses: async (): Promise<any[]> => {
+    const cached = getStorage(KEYS.EXPENSES, initialExpenses);
+
+    try {
+      const mysqlRes = await fetchExpensesServerFn();
+      if (mysqlRes.success && mysqlRes.data) {
+        setStorage(KEYS.EXPENSES, mysqlRes.data);
+        return mysqlRes.data;
+      }
+    } catch (e) {
+      console.warn("Hostinger MySQL getExpenses error:", e);
+    }
+
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase.from('expenses').select('*').order('created_at', { ascending: false });
       if (!error && data) return rowsToCamel(data);
-      console.error('Supabase getExpenses error:', error);
     }
-    return getStorage(KEYS.EXPENSES, initialExpenses);
+
+    return cached;
   },
+
   createExpense: async (exp: { category: string; amount: number; description: string; date: string }): Promise<any> => {
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { count } = await supabase.from('expenses').select('*', { count: 'exact', head: true });
-        const id = `EXP-${String((count || 0) + 1).padStart(3, '0')}`;
-        const newExp = { id, ...exp };
-        const { error } = await supabase.from('expenses').insert(rowToLower(newExp));
-        if (!error) return newExp;
-        console.error('Supabase createExpense error:', error);
-      } catch (err) {
-        console.error('Supabase createExpense catch error:', err);
-      }
-    }
     const expenses = getStorage(KEYS.EXPENSES, initialExpenses);
-    const newExp = {
-      id: `EXP-${String(expenses.length + 1).padStart(3, '0')}`,
-      ...exp
-    };
+    const id = `EXP-${String(expenses.length + 1).padStart(3, '0')}`;
+    const newExp = { id, ...exp };
     expenses.unshift(newExp);
     setStorage(KEYS.EXPENSES, expenses);
+
+    try {
+      await saveExpenseServerFn({ data: newExp });
+    } catch (e) {
+      console.warn("Hostinger MySQL saveExpense exception:", e);
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('expenses').insert(rowToLower(newExp));
+    }
+
     return newExp;
   },
 
-  // PAYMENTS
+  // ─── PAYMENTS ──────────────────────────────────────────────────────────────
   getPayments: async (): Promise<any[]> => {
+    const cached = getStorage(KEYS.PAYMENTS, initialPayments);
+
+    try {
+      const mysqlRes = await fetchPaymentsServerFn();
+      if (mysqlRes.success && mysqlRes.data) {
+        setStorage(KEYS.PAYMENTS, mysqlRes.data);
+        return mysqlRes.data;
+      }
+    } catch (e) {
+      console.warn("Hostinger MySQL getPayments error:", e);
+    }
+
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase.from('payments').select('*').order('created_at', { ascending: false });
       if (!error && data) return rowsToCamel(data);
-      console.error('Supabase getPayments error:', error);
     }
-    return getStorage(KEYS.PAYMENTS, initialPayments);
+
+    return cached;
   },
+
   createPayment: async (pmt: { orderId: string; method: string; amount: number; status: string; reference: string }): Promise<any> => {
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { count } = await supabase.from('payments').select('*', { count: 'exact', head: true });
-        const id = `PMT-${String((count || 0) + 1).padStart(3, '0')}`;
-        const newPmt = {
-          id,
-          ...pmt,
-          date: new Date().toISOString().split('T')[0]
-        };
-        const { error } = await supabase.from('payments').insert(rowToLower(newPmt));
-        if (!error) return newPmt;
-        console.error('Supabase createPayment error:', error);
-      } catch (err) {
-        console.error('Supabase createPayment catch error:', err);
-      }
-    }
     const payments = getStorage(KEYS.PAYMENTS, initialPayments);
+    const id = `PMT-${String(payments.length + 1).padStart(3, '0')}`;
     const newPmt = {
-      id: `PMT-${String(payments.length + 1).padStart(3, '0')}`,
+      id,
       ...pmt,
       date: new Date().toISOString().split('T')[0]
     };
     payments.unshift(newPmt);
     setStorage(KEYS.PAYMENTS, payments);
+
+    try {
+      await savePaymentServerFn({ data: newPmt });
+    } catch (e) {
+      console.warn("Hostinger MySQL savePayment exception:", e);
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('payments').insert(rowToLower(newPmt));
+    }
+
     return newPmt;
   },
 
-  // NOTIFICATIONS
+  // ─── NOTIFICATIONS ─────────────────────────────────────────────────────────
   getNotifications: async (): Promise<any[]> => {
-    const threeDaysAgo = new Date();
-    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-    const threeDaysAgoISO = threeDaysAgo.toISOString();
+    const cached = getStorage(KEYS.NOTIFICATIONS, initialNotifications);
+
+    try {
+      const mysqlRes = await fetchNotificationsServerFn();
+      if (mysqlRes.success && mysqlRes.data) {
+        setStorage(KEYS.NOTIFICATIONS, mysqlRes.data);
+        return mysqlRes.data;
+      }
+    } catch (e) {
+      console.warn("Hostinger MySQL getNotifications error:", e);
+    }
 
     if (isSupabaseConfigured && supabase) {
-      try {
-        await supabase.from('notifications').delete().lt('created_at', threeDaysAgoISO);
-      } catch (err) {
-        console.error('Supabase auto-prune notifications error:', err);
-      }
-
       const { data, error } = await supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(30);
       if (!error && data) return rowsToCamel(data);
-      console.error('Supabase getNotifications error:', error);
     }
 
-    const list = getStorage(KEYS.NOTIFICATIONS, initialNotifications);
-    const prunedList = list.filter((n: any) => new Date(n.time) >= threeDaysAgo);
-    if (prunedList.length !== list.length) {
-      setStorage(KEYS.NOTIFICATIONS, prunedList);
-    }
-    return prunedList;
+    return cached;
   },
+
   createNotification: async (notif: { type: string; title: string; description: string }): Promise<any> => {
-    if (isSupabaseConfigured && supabase) {
-      const newNotif = {
-        id: `N${Date.now()}`,
-        read: false,
-        time: new Date().toISOString(),
-        ...notif
-      };
-      const { error } = await supabase.from('notifications').insert(rowToLower(newNotif));
-      if (!error) return newNotif;
-      console.error('Supabase createNotification error:', error);
-    }
-    const list = getStorage(KEYS.NOTIFICATIONS, initialNotifications);
     const newNotif = {
       id: `N${Date.now()}`,
       read: false,
       time: new Date().toISOString(),
       ...notif
     };
+    const list = getStorage(KEYS.NOTIFICATIONS, initialNotifications);
     list.unshift(newNotif);
-    setStorage(KEYS.NOTIFICATIONS, list.slice(0, 30)); // Cap at 30
+    setStorage(KEYS.NOTIFICATIONS, list.slice(0, 30));
+
+    try {
+      await addNotificationServerFn({ data: newNotif });
+    } catch (e) {
+      console.warn("Hostinger MySQL addNotification exception:", e);
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('notifications').insert(rowToLower(newNotif));
+    }
+
     return newNotif;
   },
+
   markAllNotificationsRead: async (): Promise<void> => {
-    if (isSupabaseConfigured && supabase) {
-      const { error } = await supabase.from('notifications').update({ read: true }).eq('read', false);
-      if (!error) return;
-      console.error('Supabase markAllNotificationsRead error:', error);
-    }
     const list = getStorage(KEYS.NOTIFICATIONS, initialNotifications);
     const updated = list.map((n) => ({ ...n, read: true }));
     setStorage(KEYS.NOTIFICATIONS, updated);
-  },
-  dismissNotification: async (id: string): Promise<void> => {
-    if (isSupabaseConfigured && supabase) {
-      const { error } = await supabase.from('notifications').delete().eq('id', id);
-      if (!error) return;
-      console.error('Supabase dismissNotification error:', error);
+
+    try {
+      await markNotificationReadServerFn({ data: {} });
+    } catch (e) {
+      console.warn("Hostinger MySQL markNotificationRead error:", e);
     }
+
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('notifications').update({ read: true }).eq('read', false);
+    }
+  },
+
+  dismissNotification: async (id: string): Promise<void> => {
     const list = getStorage(KEYS.NOTIFICATIONS, initialNotifications);
     const updated = list.filter((n) => n.id !== id);
     setStorage(KEYS.NOTIFICATIONS, updated);
-  },
-  clearAllNotifications: async (): Promise<void> => {
+
     if (isSupabaseConfigured && supabase) {
-      const { error } = await supabase.from('notifications').delete().neq('id', '_none_');
-      if (error) {
-        console.error('Supabase clearAllNotifications error:', error);
-        throw new Error(error.message);
-      }
-      return;
+      await supabase.from('notifications').delete().eq('id', id);
     }
-    setStorage(KEYS.NOTIFICATIONS, []);
   },
 
-  // ADMIN AUTH
+  clearAllNotifications: async (): Promise<void> => {
+    setStorage(KEYS.NOTIFICATIONS, []);
+
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('notifications').delete().neq('id', '_none_');
+    }
+  },
+
+  // ─── ADMIN AUTH & MANAGEMENT ───────────────────────────────────────────────
   loginAdmin: async (email: string, password: string): Promise<{ success: boolean; user?: any; message?: string }> => {
     const checkEmail = email.trim().toLowerCase();
     const inputHash = await hashPassword(password);
     
+    // Priority 1: Hostinger MySQL Verification
+    try {
+      const mysqlRes = await verifyAdminServerFn({ data: { email: checkEmail, passwordHash: inputHash } });
+      if (mysqlRes.success && mysqlRes.admin) {
+        return { success: true, user: mysqlRes.admin };
+      }
+    } catch (e) {
+      console.warn("Hostinger MySQL verifyAdmin exception:", e);
+    }
+
+    // Priority 2: Supabase Auth / Profile Fallback
     if (isSupabaseConfigured && supabase) {
-      // 1. Try to sign in directly with Supabase Auth
       try {
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
           email: checkEmail,
@@ -1011,60 +939,27 @@ export const db = {
           };
         }
       } catch (authErr) {
-        console.error('Supabase Auth sign-in failed, checking profile table...', authErr);
+        console.error('Supabase Auth sign-in failed:', authErr);
       }
 
-      // 2. Fallback: Verify credentials in custom table and auto-migrate to Supabase Auth
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('admins')
         .select('*')
         .eq('email', checkEmail)
         .maybeSingle();
-      
-      if (error) {
-        console.error('Supabase admin lookup error:', error);
-        return { success: false, message: 'Database connection error.' };
-      }
-      
-      if (data) {
-        if (data.password === password || data.password === inputHash) {
-          // Auto-migrate user to Supabase Auth
-          try {
-            const { error: signUpError } = await supabase.auth.signUp({
-              email: checkEmail,
-              password: password,
-              options: {
-                data: {
-                  name: data.name,
-                  role: data.role || 'Super Admin'
-                }
-              }
-            });
 
-            if (!signUpError) {
-              await supabase.auth.signInWithPassword({
-                email: checkEmail,
-                password: password
-              });
-            }
-          } catch (signUpErr) {
-            console.error('Auto migration to Supabase Auth failed:', signUpErr);
-          }
-
-          return { success: true, user: rowToCamel(data) };
-        }
+      if (data && (data.password === password || data.password === inputHash)) {
+        return { success: true, user: rowToCamel(data) };
       }
-      return { success: false, message: 'Invalid email or password.' };
     }
-    
-    // Fallback to local storage / static credentials
+
+    // Local Storage Fallback
     const admins = getStorage(KEYS.ADMINS, initialAdmins);
     const matched = admins.find((a) => a.email.toLowerCase() === checkEmail);
-    if (matched) {
-      if (matched.password === password || matched.password === inputHash) {
-        return { success: true, user: { email: matched.email, role: matched.role || 'Super Admin', name: matched.name || 'Admin User' } };
-      }
+    if (matched && (matched.password === password || matched.password === inputHash)) {
+      return { success: true, user: { email: matched.email, role: matched.role || 'Super Admin', name: matched.name || 'Admin User' } };
     }
+
     return { success: false, message: 'Invalid email or password. Please try again.' };
   },
 
@@ -1077,52 +972,6 @@ export const db = {
   signupAdmin: async (adminData: { name: string; email: string; password: string; role: 'Super Admin' | 'Manager' | 'Staff' }): Promise<{ success: boolean; message?: string }> => {
     const checkEmail = adminData.email.trim().toLowerCase();
     const hashedPassword = await hashPassword(adminData.password);
-    
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { data: existing, error: checkError } = await supabase
-          .from('admins')
-          .select('id')
-          .eq('email', checkEmail)
-          .maybeSingle();
-          
-        if (checkError) {
-          console.error('Supabase check email error:', checkError);
-          return { success: false, message: 'Error checking email uniqueness.' };
-        }
-        if (existing) {
-          return { success: false, message: 'An admin account with this email already exists.' };
-        }
-        
-        const newAdmin = {
-          email: checkEmail,
-          password: hashedPassword,
-          role: adminData.role,
-          name: adminData.name,
-        };
-        
-        const { error: insertError } = await supabase
-          .from('admins')
-          .insert(rowToLower(newAdmin));
-          
-        if (insertError) {
-          console.error('Supabase signup admin error:', insertError);
-          return { success: false, message: insertError.message || 'Error creating admin account.' };
-        }
-        return { success: true };
-      } catch (err: any) {
-        console.error('Catch signup error:', err);
-        return { success: false, message: err.message || 'An unexpected error occurred.' };
-      }
-    }
-    
-    // Fallback to local storage
-    const admins = getStorage(KEYS.ADMINS, initialAdmins);
-    const existing = admins.find((a) => a.email.toLowerCase() === checkEmail);
-    if (existing) {
-      return { success: false, message: 'An admin account with this email already exists.' };
-    }
-    
     const newAdmin = {
       id: `admin-${Date.now()}`,
       email: checkEmail,
@@ -1131,274 +980,134 @@ export const db = {
       name: adminData.name,
       created_at: new Date().toISOString()
     };
-    
+
+    // Save to Hostinger MySQL
+    try {
+      await saveAdminServerFn({ data: newAdmin });
+    } catch (e) {
+      console.warn("Hostinger MySQL saveAdmin exception:", e);
+    }
+
+    // Save to Supabase
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('admins').insert(rowToLower(newAdmin));
+    }
+
+    // Save to Local Storage
+    const admins = getStorage(KEYS.ADMINS, initialAdmins);
     admins.push(newAdmin);
     setStorage(KEYS.ADMINS, admins);
+
     return { success: true };
   },
 
   changeAdminPassword: async (email: string, currentPass: string, newPass: string): Promise<{ success: boolean; message?: string }> => {
     const checkEmail = email.trim().toLowerCase();
-    const currentHash = await hashPassword(currentPass);
     const newHash = await hashPassword(newPass);
 
-    if (isSupabaseConfigured && supabase) {
-      try {
-        // Step 1: Fetch admin record
-        const { data: admin, error: fetchError } = await supabase
-          .from('admins')
-          .select('*')
-          .eq('email', checkEmail)
-          .maybeSingle();
-
-        if (fetchError) {
-          console.error('Supabase fetch admin error:', fetchError);
-          return { success: false, message: 'Database error fetching admin account.' };
-        }
-
-        if (!admin) {
-          console.error('Admin not found for email:', checkEmail);
-          return { success: false, message: `Admin account not found for: ${checkEmail}` };
-        }
-
-        // Step 2: Verify current password (support plain-text legacy AND hashed passwords)
-        const storedPass = admin.password as string;
-        const passMatches = storedPass === currentPass || storedPass === currentHash;
-        if (!passMatches) {
-          return { success: false, message: 'Incorrect current password.' };
-        }
-
-        // Step 3: Update password and verify with .select() to confirm rows changed
-        const { data: updatedRows, error: updateError } = await supabase
-          .from('admins')
-          .update({ password: newHash })
-          .eq('email', checkEmail)
-          .select();
-
-        if (updateError) {
-          console.error('Supabase update password error:', updateError);
-          return { success: false, message: updateError.message || 'Error updating password.' };
-        }
-
-        if (!updatedRows || updatedRows.length === 0) {
-          console.error('Supabase update matched 0 rows for email:', checkEmail);
-          return { success: false, message: 'Password update failed — no records were changed. Check Supabase RLS policies.' };
-        }
-
-        console.log('Password updated successfully in Supabase for:', checkEmail);
-        return { success: true };
-      } catch (err: any) {
-        console.error('changeAdminPassword Supabase exception:', err);
-        return { success: false, message: err.message || 'An unexpected error occurred.' };
-      }
-    }
-
-    // ── localStorage fallback ──
-    let admins = getStorage(KEYS.ADMINS, initialAdmins);
-    if (!admins || admins.length === 0) {
-      admins = [...initialAdmins];
-      setStorage(KEYS.ADMINS, admins);
-    }
-
-    let idx = admins.findIndex((a: any) => a.email.toLowerCase() === checkEmail);
-
-    if (idx === -1) {
-      // Try to seed from initialAdmins if email matches there
-      const seedAdmin = initialAdmins.find((a) => a.email.toLowerCase() === checkEmail);
-      if (!seedAdmin) {
-        return { success: false, message: `Admin account not found locally for: ${checkEmail}` };
-      }
-      const seedPassMatches = seedAdmin.password === currentPass || seedAdmin.password === currentHash;
-      if (!seedPassMatches) {
-        return { success: false, message: 'Incorrect current password.' };
-      }
-      admins.push({ ...seedAdmin, password: newHash });
-      setStorage(KEYS.ADMINS, admins);
-      console.log('Password updated (seeded to localStorage) for:', checkEmail);
-      return { success: true };
-    }
-
-    const storedPass = admins[idx].password as string;
-    if (storedPass !== currentPass && storedPass !== currentHash) {
+    const loginRes = await db.loginAdmin(checkEmail, currentPass);
+    if (!loginRes.success) {
       return { success: false, message: 'Incorrect current password.' };
     }
 
-    admins[idx] = { ...admins[idx], password: newHash };
-    setStorage(KEYS.ADMINS, admins);
-    console.log('Password updated in localStorage for:', checkEmail);
+    // Update in Hostinger MySQL
+    try {
+      await saveAdminServerFn({
+        data: {
+          id: loginRes.user?.id || `admin-${Date.now()}`,
+          email: checkEmail,
+          password: newHash,
+          role: loginRes.user?.role || 'Super Admin',
+          name: loginRes.user?.name || 'Admin'
+        }
+      });
+    } catch (e) {
+      console.warn("Hostinger MySQL update password exception:", e);
+    }
+
+    // Update in Supabase
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('admins').update({ password: newHash }).eq('email', checkEmail);
+    }
+
+    // Update in Local Storage
+    const admins = getStorage(KEYS.ADMINS, initialAdmins);
+    const idx = admins.findIndex((a) => a.email.toLowerCase() === checkEmail);
+    if (idx >= 0) {
+      admins[idx].password = newHash;
+      setStorage(KEYS.ADMINS, admins);
+    }
+
     return { success: true };
   },
 
   changeAdminEmail: async (oldEmail: string, newEmail: string, pass: string): Promise<{ success: boolean; message?: string }> => {
     const checkOld = oldEmail.trim().toLowerCase();
     const checkNew = newEmail.trim().toLowerCase();
-    const passHash = await hashPassword(pass);
 
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { data: exists } = await supabase
-          .from('admins')
-          .select('id')
-          .eq('email', checkNew)
-          .maybeSingle();
-        if (exists) {
-          return { success: false, message: 'The new email is already in use by another admin.' };
-        }
-
-        const { data: admin } = await supabase
-          .from('admins')
-          .select('*')
-          .eq('email', checkOld)
-          .maybeSingle();
-
-        if (!admin) return { success: false, message: 'Admin account not found.' };
-
-        if (admin.password !== pass && admin.password !== passHash) {
-          return { success: false, message: 'Incorrect password verification.' };
-        }
-
-        const { error } = await supabase
-          .from('admins')
-          .update(rowToLower({ email: checkNew }))
-          .eq('email', checkOld);
-
-        if (error) return { success: false, message: error.message || 'Error updating email.' };
-        return { success: true };
-      } catch (err: any) {
-        return { success: false, message: err.message || 'An unexpected error occurred.' };
-      }
-    }
-
-    const admins = getStorage(KEYS.ADMINS, initialAdmins);
-    const exists = admins.find((a) => a.email.toLowerCase() === checkNew);
-    if (exists) {
-      return { success: false, message: 'The new email is already in use by another admin.' };
-    }
-
-    const idx = admins.findIndex((a) => a.email.toLowerCase() === checkOld);
-    if (idx === -1) return { success: false, message: 'Admin account not found.' };
-
-    if (admins[idx].password !== pass && admins[idx].password !== passHash) {
+    const loginRes = await db.loginAdmin(checkOld, pass);
+    if (!loginRes.success) {
       return { success: false, message: 'Incorrect password verification.' };
     }
 
-    admins[idx].email = checkNew;
-    setStorage(KEYS.ADMINS, admins);
+    // Update Hostinger MySQL
+    try {
+      await saveAdminServerFn({
+        data: {
+          id: loginRes.user?.id || `admin-${Date.now()}`,
+          email: checkNew,
+          password: loginRes.user?.password || pass,
+          role: loginRes.user?.role || 'Super Admin',
+          name: loginRes.user?.name || 'Admin'
+        }
+      });
+      await deleteAdminServerFn({ data: { id: loginRes.user?.id } });
+    } catch (e) {
+      console.warn("Hostinger MySQL email change exception:", e);
+    }
+
+    // Update Supabase
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('admins').update(rowToLower({ email: checkNew })).eq('email', checkOld);
+    }
+
+    // Local Storage
+    const admins = getStorage(KEYS.ADMINS, initialAdmins);
+    const idx = admins.findIndex((a) => a.email.toLowerCase() === checkOld);
+    if (idx >= 0) {
+      admins[idx].email = checkNew;
+      setStorage(KEYS.ADMINS, admins);
+    }
+
     return { success: true };
   },
 
   clearAllOrdersAndCustomers: async (): Promise<void> => {
-    // Local Storage Fallback
     setStorage(KEYS.ORDERS, []);
     setStorage(KEYS.CUSTOMERS, []);
     setStorage(KEYS.PAYMENTS, []);
     setStorage(KEYS.NOTIFICATIONS, []);
 
+    try {
+      await clearAllOrdersServerFn();
+    } catch (e) {
+      console.warn("Hostinger MySQL clearAllOrders error:", e);
+    }
+
     if (isSupabaseConfigured && supabase) {
-      try {
-        // Delete all payments
-        const { error: pmtErr } = await supabase.from('payments').delete().neq('id', '_none_');
-        if (pmtErr) {
-          console.error('Supabase clear payments error:', pmtErr);
-          if (!isNetworkError(pmtErr)) throw new Error(pmtErr.message);
-        }
-
-        // Delete all orders
-        const { error: ordErr } = await supabase.from('orders').delete().neq('id', '_none_');
-        if (ordErr) {
-          console.error('Supabase clear orders error:', ordErr);
-          if (!isNetworkError(ordErr)) throw new Error(ordErr.message);
-        }
-
-        // Delete all customers
-        const { error: custErr } = await supabase.from('customers').delete().neq('id', '_none_');
-        if (custErr) {
-          console.error('Supabase clear customers error:', custErr);
-          if (!isNetworkError(custErr)) throw new Error(custErr.message);
-        }
-
-        // Delete all notifications
-        const { error: notifErr } = await supabase.from('notifications').delete().neq('id', '_none_');
-        if (notifErr) {
-          console.error('Supabase clear notifications error:', notifErr);
-          if (!isNetworkError(notifErr)) throw new Error(notifErr.message);
-        }
-      } catch (err: any) {
-        console.error('Supabase clearAllOrdersAndCustomers exception:', err);
-        if (!isNetworkError(err)) throw err;
-      }
+      await supabase.from('payments').delete().neq('id', '_none_');
+      await supabase.from('orders').delete().neq('id', '_none_');
+      await supabase.from('customers').delete().neq('id', '_none_');
+      await supabase.from('notifications').delete().neq('id', '_none_');
     }
   },
 
-  deleteOrder: async (id: string): Promise<void> => {
-    const orders = getStorage(KEYS.ORDERS, initialOrders);
-    const updatedOrders = orders.filter((x) => x.id !== id);
-    setStorage(KEYS.ORDERS, updatedOrders);
-
-    const payments = getStorage(KEYS.PAYMENTS, initialPayments);
-    const updatedPayments = payments.filter((x) => x.orderId !== id);
-    setStorage(KEYS.PAYMENTS, updatedPayments);
-
-    if (isSupabaseConfigured && supabase) {
-      try {
-        // Delete associated payments
-        const { error: pmtErr } = await supabase.from('payments').delete().eq('orderid', id);
-        if (pmtErr) console.error('Supabase deleteOrder payments error:', pmtErr);
-
-        // Delete the order
-        const { error: ordErr } = await supabase.from('orders').delete().eq('id', id);
-        if (ordErr) {
-          console.error('Supabase deleteOrder error:', ordErr);
-          throw new Error(ordErr.message);
-        }
-      } catch (err: any) {
-        console.error('Supabase deleteOrder exception:', err);
-        throw err;
-      }
-    }
-  },
-
-  deleteCustomer: async (id: string): Promise<void> => {
-    const customers = getStorage(KEYS.CUSTOMERS, initialCustomers);
-    const updated = customers.filter((x) => x.id !== id);
-    setStorage(KEYS.CUSTOMERS, updated);
-
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { error } = await supabase.from('customers').delete().eq('id', id);
-        if (error) {
-          console.error('Supabase deleteCustomer error:', error);
-          throw new Error(error.message);
-        }
-      } catch (err: any) {
-        console.error('Supabase deleteCustomer exception:', err);
-        throw err;
-      }
-    }
-  },
-
-  deletePayment: async (id: string): Promise<void> => {
-    const payments = getStorage(KEYS.PAYMENTS, initialPayments);
-    const updated = payments.filter((x) => x.id !== id);
-    setStorage(KEYS.PAYMENTS, updated);
-
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { error } = await supabase.from('payments').delete().eq('id', id);
-        if (error) {
-          console.error('Supabase deletePayment error:', error);
-          throw new Error(error.message);
-        }
-      } catch (err: any) {
-        console.error('Supabase deletePayment exception:', err);
-        throw err;
-      }
-    }
-  },
-
-  // ROLES
+  // ─── ROLES ─────────────────────────────────────────────────────────────────
   getUserRole: () => getStorage(KEYS.USER_ROLE, 'Super Admin'),
   setUserRole: (role: 'Super Admin' | 'Manager' | 'Staff') => {
     setStorage(KEYS.USER_ROLE, role);
   }
 };
+
+// Aliased export for backward compatibility
+export const dbData = db;
