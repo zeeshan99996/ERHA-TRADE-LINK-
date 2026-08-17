@@ -57,11 +57,11 @@ const KEYS = {
 const initialProducts: any[] = [
   {
     id: "prd-pzx-v91",
-    name: "PZX V91 Power Bank (10,000mAh)",
+    name: "PZX V91",
     category: "Ultra Compact",
     price: 4500,
-    salePrice: 3000,
-    stock: 100,
+    salePrice: 2999,
+    stock: 99,
     minStock: 10,
     status: "Active",
     shortDescription: "Stay powered all day with the PZX V91 - a high-capacity 10,000mAh lithium battery power bank. Ultra-compact, fast-charging, and built for reliability.",

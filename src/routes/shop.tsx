@@ -211,7 +211,21 @@ function ShopComponent() {
   useEffect(() => {
     const load = async () => {
       const prods = await db.getProducts();
-      setProducts(prods.filter((p) => p.status === "Active"));
+      const active = prods.filter((p) => p.status === "Active" || !p.status);
+      const pzxIdx = active.findIndex(
+        (p) =>
+          p &&
+          (String(p.id).toLowerCase() === "prd-pzx-v91" ||
+            String(p.name).toLowerCase().includes("pzx v91") ||
+            String(p.name).toLowerCase().includes("pzx"))
+      );
+      let sorted = active;
+      if (pzxIdx > 0) {
+        const pzx = active[pzxIdx];
+        const rest = active.filter((_, i) => i !== pzxIdx);
+        sorted = [pzx, ...rest];
+      }
+      setProducts(sorted);
       setLoading(false);
     };
     load();

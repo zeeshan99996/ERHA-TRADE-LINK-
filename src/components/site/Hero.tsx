@@ -148,15 +148,30 @@ export function Hero({ products = [] }: HeroProps) {
     if (products.length < 1) return;
     const active = products.filter((p) => p.status === "Active" || !p.status);
     if (active.length === 0) return;
-    const shuffled = shuffle(active);
-    const built: [any, any][] = [];
-    for (let i = 0; i + 1 < shuffled.length; i += 2) {
-      built.push([shuffled[i], shuffled[i + 1]]);
+    
+    // Sort PZX V91 to the first position
+    const pzxIdx = active.findIndex(
+      (p) =>
+        p &&
+        (String(p.id).toLowerCase() === "prd-pzx-v91" ||
+          String(p.name).toLowerCase().includes("pzx v91") ||
+          String(p.name).toLowerCase().includes("pzx"))
+    );
+    let ordered = active;
+    if (pzxIdx > 0) {
+      const pzx = active[pzxIdx];
+      const rest = active.filter((_, i) => i !== pzxIdx);
+      ordered = [pzx, ...rest];
     }
-    if (shuffled.length === 1) built.push([shuffled[0], shuffled[0]]);
-    else if (shuffled.length % 2 === 1) built.push([shuffled[shuffled.length - 1], shuffled[0]]);
+
+    const built: [any, any][] = [];
+    for (let i = 0; i + 1 < ordered.length; i += 2) {
+      built.push([ordered[i], ordered[i + 1]]);
+    }
+    if (ordered.length === 1) built.push([ordered[0], ordered[0]]);
+    else if (ordered.length % 2 === 1) built.push([ordered[ordered.length - 1], ordered[0]]);
     setPairs(built);
-    setIdx(Math.floor(Math.random() * built.length));
+    setIdx(0);
   }, [products]);
 
   const fadeTo = useCallback((nextIdx: number) => {

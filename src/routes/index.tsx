@@ -8,7 +8,7 @@ import { Footer } from "@/components/site/Footer";
 import { useState, useEffect } from "react";
 import { db } from "@/lib/supabase";
 
-export const Route = createFileRoute("/")(({
+export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "ERHA Trade Link International — Premium Tech & Accessories in Multan, Pakistan" },
@@ -27,7 +27,24 @@ export const Route = createFileRoute("/")(({
     ],
   }),
   component: Index,
-} as any));
+} as any);
+
+function sortPzxFirst(items: any[]) {
+  if (!items || items.length <= 1) return items;
+  const idx = items.findIndex(
+    (p) =>
+      p &&
+      (String(p.id).toLowerCase() === "prd-pzx-v91" ||
+        String(p.name).toLowerCase().includes("pzx v91") ||
+        String(p.name).toLowerCase().includes("pzx"))
+  );
+  if (idx > 0) {
+    const pzx = items[idx];
+    const rest = items.filter((_, i) => i !== idx);
+    return [pzx, ...rest];
+  }
+  return items;
+}
 
 function Index() {
   const [featured, setFeatured] = useState<any[]>([]);
@@ -35,8 +52,8 @@ function Index() {
   useEffect(() => {
     const loadProducts = async () => {
       const prods = await db.getProducts();
-      const active = prods.filter((p) => p.status === "Active");
-      setFeatured(active);
+      const active = prods.filter((p) => p.status === "Active" || !p.status);
+      setFeatured(sortPzxFirst(active));
     };
     loadProducts();
     window.addEventListener("storage", loadProducts);
@@ -61,4 +78,3 @@ function Index() {
     </div>
   );
 }
-
