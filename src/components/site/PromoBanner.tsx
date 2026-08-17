@@ -3,10 +3,12 @@ import { ArrowRight, Zap, ShoppingCart, MessageCircle, Battery, Package, Truck, 
 import { motion, AnimatePresence } from "motion/react";
 import { db } from "@/lib/supabase";
 import { toast } from "sonner";
+import { WhatsAppOrderModal } from "@/components/site/WhatsAppOrderModal";
 import pzxImg from "@/assets/pzx_v91_power_bank.png";
 
 export function PromoBanner() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isWaModalOpen, setIsWaModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState<any | null>(null);
   const [quantity, setQuantity] = useState(1);
@@ -145,14 +147,12 @@ export function PromoBanner() {
                 >
                   <ShoppingCart className="size-4" /> Order Now
                 </button>
-                <a
-                  href="https://wa.me/923023333499"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-5 py-3 text-sm font-bold backdrop-blur transition hover:bg-white/20"
+                <button
+                  onClick={() => setIsWaModalOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-5 py-3 text-sm font-bold backdrop-blur transition hover:bg-white/20 cursor-pointer"
                 >
                   <MessageCircle className="size-4 text-[#25D366]" /> WhatsApp Order
-                </a>
+                </button>
               </div>
 
               {/* Contact strip */}
@@ -471,6 +471,23 @@ export function PromoBanner() {
           </>
         )}
       </AnimatePresence>
+
+      <WhatsAppOrderModal
+        isOpen={isWaModalOpen}
+        onClose={() => setIsWaModalOpen(false)}
+        items={[
+          {
+            product: {
+              id: "pzx-v91",
+              name: "PZX V91 20,000mAh 22.5W Fast Charging Power Bank",
+              price: productPrice,
+              image: pzxImg,
+              category: "Power Banks",
+            },
+            quantity: quantity,
+          },
+        ]}
+      />
     </section>
   );
 }

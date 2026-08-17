@@ -5,6 +5,7 @@ import { Footer } from "@/components/site/Footer";
 import { db } from "@/lib/supabase";
 import { addToCart } from "@/lib/cart";
 import { openCartDrawer } from "@/components/site/CartDrawer";
+import { WhatsAppOrderModal } from "@/components/site/WhatsAppOrderModal";
 import { toast } from "sonner";
 import { Star, ShieldCheck, Truck, RefreshCw, Zap, Plus, Minus, ArrowLeft, MessageCircle } from "lucide-react";
 
@@ -28,6 +29,7 @@ function ProductDetailComponent() {
   const [product, setProduct] = useState<any | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
+  const [isWaModalOpen, setIsWaModalOpen] = useState(false);
 
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [imageTilt, setImageTilt] = useState({ x: 0, y: 0 });
@@ -402,14 +404,12 @@ function ProductDetailComponent() {
             )}
 
             {/* WhatsApp Direct Buy */}
-            <a
-              href={`https://wa.me/923023333499?text=Hi%20ERHA%20Trade%20Link,%20I%20am%20interested%20in%20buying%20the%20${encodeURIComponent(product.name)}%20(Price:%20Rs.%20${price.toLocaleString()})`}
-              target="_blank"
-              rel="noreferrer"
+            <button
+              onClick={() => setIsWaModalOpen(true)}
               className="flex w-full h-12 items-center justify-center gap-2 rounded-xl bg-[#25D366] hover:bg-[#20ba5a] text-sm font-bold text-white shadow-soft transition duration-150 cursor-pointer hover:shadow-lg"
             >
               <MessageCircle className="size-5 fill-current" /> Order on WhatsApp (COD Available)
-            </a>
+            </button>
 
             {/* Trust highlights */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-b border-slate-100 py-4 my-2 text-xs font-semibold text-slate-600">
@@ -497,6 +497,14 @@ function ProductDetailComponent() {
           </div>
         )}
       </main>
+
+      {product && (
+        <WhatsAppOrderModal
+          isOpen={isWaModalOpen}
+          onClose={() => setIsWaModalOpen(false)}
+          items={[{ product, quantity }]}
+        />
+      )}
 
       <Footer />
     </div>

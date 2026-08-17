@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, ShoppingBag, Plus, Minus, Trash2, ShieldCheck, ArrowRight } from "lucide-react";
+import { X, ShoppingBag, Plus, Minus, Trash2, ShieldCheck, ArrowRight, MessageCircle } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { getCart, removeFromCart, updateCartQty, getCartTotal, CartItem } from "@/lib/cart";
+import { WhatsAppOrderModal } from "@/components/site/WhatsAppOrderModal";
 
 export function openCartDrawer() {
   if (typeof window !== "undefined") {
@@ -12,6 +13,7 @@ export function openCartDrawer() {
 
 export function CartDrawer() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isWaModalOpen, setIsWaModalOpen] = useState(false);
   const [items, setItems] = useState<CartItem[]>([]);
 
   useEffect(() => {
@@ -43,7 +45,8 @@ export function CartDrawer() {
   const progressToFree = Math.min(100, (total / freeShippingLimit) * 100);
 
   return (
-    <AnimatePresence>
+    <>
+      <AnimatePresence>
       {isOpen && (
         <>
           {/* Backdrop */}
@@ -217,7 +220,7 @@ export function CartDrawer() {
                   </div>
                 </div>
 
-                <div className="space-y-2.5 pt-1">
+                <div className="space-y-2 pt-1">
                   <Link
                     to="/checkout"
                     onClick={() => setIsOpen(false)}
@@ -227,7 +230,14 @@ export function CartDrawer() {
                     <ArrowRight className="size-4" />
                   </Link>
 
-                  <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground text-center">
+                  <button
+                    onClick={() => setIsWaModalOpen(true)}
+                    className="flex w-full items-center justify-center gap-2 rounded-full bg-[#25D366] hover:bg-[#20ba5a] py-2.5 text-xs font-bold text-white shadow-soft transition cursor-pointer"
+                  >
+                    <MessageCircle className="size-4 fill-current" /> Order Cart via WhatsApp (COD)
+                  </button>
+
+                  <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground text-center pt-1">
                     <ShieldCheck className="size-3.5 text-emerald-600" />
                     <span>Safe & Secure checkout • Warranty included</span>
                   </div>
@@ -238,5 +248,13 @@ export function CartDrawer() {
         </>
       )}
     </AnimatePresence>
+
+    <WhatsAppOrderModal
+      isOpen={isWaModalOpen}
+      onClose={() => setIsWaModalOpen(false)}
+      items={items.map((i) => ({ product: i.product, quantity: i.quantity }))}
+      isCart={true}
+    />
+    </>
   );
 }

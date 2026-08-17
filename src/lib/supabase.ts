@@ -564,6 +564,20 @@ export const db = {
     window.dispatchEvent(new Event('storage'));
     window.dispatchEvent(new Event('erha_orders_update'));
 
+    // Create immediate local notification for zero-latency admin alert
+    const isWhatsApp = orderData.paymentMethod?.toLowerCase().includes('whatsapp');
+    (async () => {
+      try {
+        await db.createNotification({
+          type: 'order',
+          title: isWhatsApp ? 'New WhatsApp Order Received' : 'New Order Received',
+          description: `${newOrder.id} from ${orderData.customerName} (${isWhatsApp ? 'WhatsApp COD' : orderData.paymentMethod}) — Rs. ${orderData.total.toLocaleString()}`
+        });
+      } catch (e) {
+        console.warn('Local notification error:', e);
+      }
+    })();
+
     // 2. Perform background Supabase sync without blocking customer UI
     if (isSupabaseConfigured && supabase) {
       (async () => {
