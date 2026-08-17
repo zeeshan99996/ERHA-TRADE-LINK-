@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import logoImg from "../assets/erha-logo.png";
+import faviconImg from "../assets/erha-favicon.png";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
 function NotFoundComponent() {
@@ -95,7 +96,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         rel: "icon",
         type: "image/png",
-        href: logoImg,
+        href: faviconImg,
       },
       {
         rel: "stylesheet",
