@@ -92,7 +92,7 @@ export function Header() {
             display: flex;
             width: max-content;
             will-change: transform;
-            animation: topHeaderTicker 20s linear infinite;
+            animation: topHeaderTicker 40s linear infinite;
           }
           .top-header-ticker-track:hover {
             animation-play-state: paused;
