@@ -234,7 +234,8 @@ export function getMemoryProducts(): any[] {
 
 export function upsertMemoryProduct(product: any): void {
   if (!product || !product.id) return;
-  const idx = memoryProducts.findIndex((p) => p.id === product.id);
+  const targetId = String(product.id).trim().toLowerCase();
+  const idx = memoryProducts.findIndex((p) => p && String(p.id).trim().toLowerCase() === targetId);
   if (idx >= 0) {
     memoryProducts[idx] = { ...memoryProducts[idx], ...product };
   } else {
@@ -243,11 +244,13 @@ export function upsertMemoryProduct(product: any): void {
 }
 
 export function deleteMemoryProduct(id: string): void {
-  memoryProducts = memoryProducts.filter((p) => p.id !== id);
+  if (!id) return;
+  const targetId = String(id).trim().toLowerCase();
+  memoryProducts = memoryProducts.filter((p) => p && String(p.id).trim().toLowerCase() !== targetId);
 }
 
 export function setMemoryProducts(products: any[]): void {
-  if (Array.isArray(products) && products.length > 0) {
+  if (Array.isArray(products)) {
     memoryProducts = [...products];
   }
 }

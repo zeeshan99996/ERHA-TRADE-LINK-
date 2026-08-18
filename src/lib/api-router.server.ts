@@ -172,17 +172,25 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       }
 
       if (request.method === "DELETE") {
-        const id = url.searchParams.get("id");
+        let id = url.searchParams.get("id");
+        if (!id) {
+          try {
+            const body = await request.json();
+            id = body?.id;
+          } catch {}
+        }
         if (!id) return corsResponse({ success: false, error: "Product id required" }, 400);
+
         deleteMemoryProduct(id);
+
         if (isMysqlConfigured()) {
           try {
-            await executeQuery("DELETE FROM products WHERE id = ?", [id]);
+            await executeQuery("DELETE FROM products WHERE LOWER(id) = LOWER(?)", [id]);
           } catch (mysqlErr: any) {
             console.warn("[API Router] MySQL delete warning:", mysqlErr.message);
           }
         }
-        return corsResponse({ success: true, message: "Product deleted" });
+        return corsResponse({ success: true, message: "Product deleted", data: getMemoryProducts() });
       }
     }
 

@@ -161,9 +161,9 @@ export const deleteProductServerFn = createServerFn({ method: "POST" })
     deleteMemoryProduct(data.id);
     if (isMysqlConfigured()) {
       try {
-        await executeQuery("DELETE FROM products WHERE id = ?", [data.id]);
+        await executeQuery("DELETE FROM products WHERE LOWER(id) = LOWER(?)", [data.id]);
       } catch (err: any) {
-        console.warn("[deleteProductServerFn] MySQL delete warning:", err.message);
+        console.warn("[deleteProductServerFn] MySQL warning:", err.message);
       }
     }
     return { success: true };

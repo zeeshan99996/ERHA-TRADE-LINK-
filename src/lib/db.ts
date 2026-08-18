@@ -118,17 +118,17 @@ function setStorage<T>(key: string, val: T) {
 export const db = {
   // ─── PRODUCTS ─────────────────────────────────────────────────────────────
   getProducts: async (): Promise<any[]> => {
-    const cached = getStorage(KEYS.PRODUCTS, initialProducts);
     try {
       const mysqlRes = await fetchProductsServerFn();
-      if (mysqlRes.success && mysqlRes.data && mysqlRes.data.length > 0) {
+      if (mysqlRes.success && Array.isArray(mysqlRes.data)) {
         setStorage(KEYS.PRODUCTS, mysqlRes.data);
         return mysqlRes.data;
       }
     } catch (e) {
       console.warn("Hostinger MySQL products sync:", e);
     }
-    return getStorage(KEYS.PRODUCTS, cached);
+    const cached = getStorage(KEYS.PRODUCTS, initialProducts);
+    return cached;
   },
 
   getProduct: async (id: string): Promise<any | null> => {
@@ -151,8 +151,9 @@ export const db = {
   },
 
   deleteProduct: async (id: string): Promise<void> => {
-    const products = getStorage(KEYS.PRODUCTS, []);
-    const updated = products.filter((x: any) => String(x.id) !== String(id));
+    const targetId = String(id).trim().toLowerCase();
+    const products = getStorage(KEYS.PRODUCTS, initialProducts);
+    const updated = products.filter((x: any) => x && String(x.id).trim().toLowerCase() !== targetId);
     setStorage(KEYS.PRODUCTS, updated);
 
     try {
@@ -169,17 +170,17 @@ export const db = {
 
   // ─── CATEGORIES ────────────────────────────────────────────────────────────
   getCategories: async (): Promise<any[]> => {
-    const cached = getStorage(KEYS.CATEGORIES, initialCategories);
     try {
       const mysqlRes = await fetchCategoriesServerFn();
-      if (mysqlRes.success && mysqlRes.data && mysqlRes.data.length > 0) {
+      if (mysqlRes.success && Array.isArray(mysqlRes.data)) {
         setStorage(KEYS.CATEGORIES, mysqlRes.data);
         return mysqlRes.data;
       }
     } catch (e) {
       console.warn("Hostinger MySQL getCategories error:", e);
     }
-    return getStorage(KEYS.CATEGORIES, cached);
+    const cached = getStorage(KEYS.CATEGORIES, initialCategories);
+    return cached;
   },
 
   saveCategory: async (c: any): Promise<void> => {
