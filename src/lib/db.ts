@@ -42,16 +42,16 @@ export async function hashPassword(password: string): Promise<string> {
 
 // ─── LOCAL STORAGE KEYS ───────────────────────────────────────────────────────
 const KEYS = {
-  PRODUCTS: 'erha_products_v6',
-  CATEGORIES: 'erha_categories_v2',
-  ORDERS: 'erha_orders_v2',
-  CUSTOMERS: 'erha_customers_v2',
-  COUPONS: 'erha_coupons_v2',
-  EXPENSES: 'erha_expenses_v2',
-  PAYMENTS: 'erha_payments_v2',
-  NOTIFICATIONS: 'erha_notifications_v2',
+  PRODUCTS: 'erha_products_v7',
+  CATEGORIES: 'erha_categories_v3',
+  ORDERS: 'erha_orders_v3',
+  CUSTOMERS: 'erha_customers_v3',
+  COUPONS: 'erha_coupons_v3',
+  EXPENSES: 'erha_expenses_v3',
+  PAYMENTS: 'erha_payments_v3',
+  NOTIFICATIONS: 'erha_notifications_v3',
   USER_ROLE: 'erha_user_role',
-  ADMINS: 'erha_admins_local_v2',
+  ADMINS: 'erha_admins_local_v3',
 };
 
 import { DEFAULT_PRODUCTS, DEFAULT_CATEGORIES } from "./server-store";
