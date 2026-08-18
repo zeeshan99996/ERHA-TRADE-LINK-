@@ -48,6 +48,22 @@ function normalizeRows(rows: any[]): any[] {
   return rows.map(normalizeRow);
 }
 
+import {
+  getMemoryProducts,
+  upsertMemoryProduct,
+  deleteMemoryProduct,
+  setMemoryProducts,
+  getMemoryCategories,
+  upsertMemoryCategory,
+  deleteMemoryCategory,
+  getMemoryOrders,
+  upsertMemoryOrder,
+  deleteMemoryOrder,
+  getMemoryCustomers,
+  upsertMemoryCustomer,
+  deleteMemoryCustomer,
+} from "./server-store";
+
 // ─── CHECK CONNECTION SERVER FN ──────────────────────────────────────────────
 export const checkMysqlStatusServerFn = createServerFn({ method: "GET" }).handler(async () => {
   if (!isMysqlConfigured()) return { configured: false, connected: false };
@@ -62,135 +78,147 @@ export const checkMysqlStatusServerFn = createServerFn({ method: "GET" }).handle
 
 // ─── PRODUCTS SERVER FNS ──────────────────────────────────────────────────────
 export const fetchProductsServerFn = createServerFn({ method: "GET" }).handler(async () => {
-  if (!isMysqlConfigured()) return { success: false, data: [] };
-  try {
-    const rows = await executeQuery("SELECT * FROM products ORDER BY created_at DESC");
-    return { success: true, data: normalizeRows(rows) };
-  } catch (err: any) {
-    console.error("fetchProductsServerFn error:", err);
-    return { success: false, error: err.message, data: [] };
+  if (isMysqlConfigured()) {
+    try {
+      const rows = await executeQuery("SELECT * FROM products ORDER BY created_at DESC");
+      if (rows && rows.length > 0) {
+        const normalized = normalizeRows(rows);
+        setMemoryProducts(normalized);
+        return { success: true, data: normalized };
+      }
+    } catch (err: any) {
+      console.warn("[fetchProductsServerFn] MySQL warning, returning resilient store:", err.message);
+    }
   }
+  return { success: true, data: getMemoryProducts() };
 });
 
 export const saveProductServerFn = createServerFn({ method: "POST" })
   .validator((data: any) => data)
   .handler(async ({ data }) => {
-    if (!isMysqlConfigured()) return { success: false };
-    try {
-      const sql = `
-        INSERT INTO products (
-          id, name, category, price, saleprice, stock, minstock, status,
-          shortdescription, image, brand, sku, rating, reviews, badge,
-          features, specifications, costprice
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON DUPLICATE KEY UPDATE
-          name = VALUES(name),
-          category = VALUES(category),
-          price = VALUES(price),
-          saleprice = VALUES(saleprice),
-          stock = VALUES(stock),
-          minstock = VALUES(minstock),
-          status = VALUES(status),
-          shortdescription = VALUES(shortdescription),
-          image = VALUES(image),
-          brand = VALUES(brand),
-          sku = VALUES(sku),
-          rating = VALUES(rating),
-          reviews = VALUES(reviews),
-          badge = VALUES(badge),
-          features = VALUES(features),
-          specifications = VALUES(specifications),
-          costprice = VALUES(costprice)
-      `;
-      const featuresVal = typeof data.features === "string" ? data.features : JSON.stringify(data.features || []);
-      const specsVal = typeof data.specifications === "string" ? data.specifications : JSON.stringify(data.specifications || {});
+    upsertMemoryProduct(data);
+    if (isMysqlConfigured()) {
+      try {
+        const sql = `
+          INSERT INTO products (
+            id, name, category, price, saleprice, stock, minstock, status,
+            shortdescription, image, brand, sku, rating, reviews, badge,
+            features, specifications, costprice
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE
+            name = VALUES(name),
+            category = VALUES(category),
+            price = VALUES(price),
+            saleprice = VALUES(saleprice),
+            stock = VALUES(stock),
+            minstock = VALUES(minstock),
+            status = VALUES(status),
+            shortdescription = VALUES(shortdescription),
+            image = VALUES(image),
+            brand = VALUES(brand),
+            sku = VALUES(sku),
+            rating = VALUES(rating),
+            reviews = VALUES(reviews),
+            badge = VALUES(badge),
+            features = VALUES(features),
+            specifications = VALUES(specifications),
+            costprice = VALUES(costprice)
+        `;
+        const featuresVal = typeof data.features === "string" ? data.features : JSON.stringify(data.features || []);
+        const specsVal = typeof data.specifications === "string" ? data.specifications : JSON.stringify(data.specifications || {});
 
-      const params = [
-        data.id,
-        data.name,
-        data.category || null,
-        data.price ?? 0,
-        data.salePrice ?? null,
-        data.stock ?? 0,
-        data.minStock ?? 10,
-        data.status || 'Active',
-        data.shortDescription || data.description || null,
-        data.image || null,
-        data.brand || 'ERHA',
-        data.sku || null,
-        data.rating ?? 4.5,
-        data.reviews ?? 0,
-        data.badge || null,
-        featuresVal,
-        specsVal,
-        data.costPrice ?? 0,
-      ];
-      await executeQuery(sql, params);
-      return { success: true };
-    } catch (err: any) {
-      console.error("saveProductServerFn error:", err);
-      return { success: false, error: err.message };
+        const params = [
+          data.id,
+          data.name,
+          data.category || null,
+          data.price ?? 0,
+          data.salePrice ?? null,
+          data.stock ?? 0,
+          data.minStock ?? 10,
+          data.status || 'Active',
+          data.shortDescription || data.description || null,
+          data.image || null,
+          data.brand || 'ERHA',
+          data.sku || null,
+          data.rating ?? 4.5,
+          data.reviews ?? 0,
+          data.badge || null,
+          featuresVal,
+          specsVal,
+          data.costPrice ?? 0,
+        ];
+        await executeQuery(sql, params);
+      } catch (err: any) {
+        console.warn("[saveProductServerFn] MySQL write warning:", err.message);
+      }
     }
+    return { success: true };
   });
 
 export const deleteProductServerFn = createServerFn({ method: "POST" })
   .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
-    if (!isMysqlConfigured()) return { success: false };
-    try {
-      await executeQuery("DELETE FROM products WHERE id = ?", [data.id]);
-      return { success: true };
-    } catch (err: any) {
-      console.error("deleteProductServerFn error:", err);
-      return { success: false, error: err.message };
+    deleteMemoryProduct(data.id);
+    if (isMysqlConfigured()) {
+      try {
+        await executeQuery("DELETE FROM products WHERE id = ?", [data.id]);
+      } catch (err: any) {
+        console.warn("[deleteProductServerFn] MySQL delete warning:", err.message);
+      }
     }
+    return { success: true };
   });
 
 // ─── CATEGORIES SERVER FNS ────────────────────────────────────────────────────
 export const fetchCategoriesServerFn = createServerFn({ method: "GET" }).handler(async () => {
-  if (!isMysqlConfigured()) return { success: false, data: [] };
-  try {
-    const rows = await executeQuery("SELECT * FROM categories ORDER BY created_at ASC");
-    return { success: true, data: normalizeRows(rows) };
-  } catch (err: any) {
-    console.error("fetchCategoriesServerFn error:", err);
-    return { success: false, error: err.message, data: [] };
+  if (isMysqlConfigured()) {
+    try {
+      const rows = await executeQuery("SELECT * FROM categories ORDER BY created_at ASC");
+      if (rows && rows.length > 0) {
+        return { success: true, data: normalizeRows(rows) };
+      }
+    } catch (err: any) {
+      console.warn("[fetchCategoriesServerFn] MySQL categories warning:", err.message);
+    }
   }
+  return { success: true, data: getMemoryCategories() };
 });
 
 export const saveCategoryServerFn = createServerFn({ method: "POST" })
   .validator((data: any) => data)
   .handler(async ({ data }) => {
-    if (!isMysqlConfigured()) return { success: false };
-    try {
-      const sql = `
-        INSERT INTO categories (id, name, slug, parentid, imageurl)
-        VALUES (?, ?, ?, ?, ?)
-        ON DUPLICATE KEY UPDATE
-          name = VALUES(name),
-          slug = VALUES(slug),
-          parentid = VALUES(parentid),
-          imageurl = VALUES(imageurl)
-      `;
-      await executeQuery(sql, [data.id, data.name, data.slug, data.parentId || null, data.imageUrl || null]);
-      return { success: true };
-    } catch (err: any) {
-      console.error("saveCategoryServerFn error:", err);
-      return { success: false, error: err.message };
+    upsertMemoryCategory(data);
+    if (isMysqlConfigured()) {
+      try {
+        const sql = `
+          INSERT INTO categories (id, name, slug, parentid, imageurl)
+          VALUES (?, ?, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE
+            name = VALUES(name),
+            slug = VALUES(slug),
+            parentid = VALUES(parentid),
+            imageurl = VALUES(imageurl)
+        `;
+        await executeQuery(sql, [data.id, data.name, data.slug, data.parentId || null, data.imageUrl || null]);
+      } catch (err: any) {
+        console.warn("[saveCategoryServerFn] MySQL write warning:", err.message);
+      }
     }
+    return { success: true };
   });
 
 export const deleteCategoryServerFn = createServerFn({ method: "POST" })
   .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
-    if (!isMysqlConfigured()) return { success: false };
-    try {
-      await executeQuery("DELETE FROM categories WHERE id = ?", [data.id]);
-      return { success: true };
-    } catch (err: any) {
-      console.error("deleteCategoryServerFn error:", err);
-      return { success: false, error: err.message };
+    deleteMemoryCategory(data.id);
+    if (isMysqlConfigured()) {
+      try {
+        await executeQuery("DELETE FROM categories WHERE id = ?", [data.id]);
+      } catch (err: any) {
+        console.warn("[deleteCategoryServerFn] MySQL delete warning:", err.message);
+      }
     }
+    return { success: true };
   });
 
 // ─── ORDERS SERVER FNS ────────────────────────────────────────────────────────

@@ -54,15 +54,10 @@ const KEYS = {
   ADMINS: 'erha_admins_local_v2',
 };
 
-const initialProducts: any[] = [];
+import { DEFAULT_PRODUCTS, DEFAULT_CATEGORIES } from "./server-store";
 
-const initialCategories = [
-  { id: 'cat1', name: 'Ultra Compact', slug: 'ultra-compact', parentId: null, imageUrl: 'https://images.unsplash.com/photo-1592890288564-76628a30a657?w=400' },
-  { id: 'cat2', name: 'High Capacity', slug: 'high-capacity', parentId: null, imageUrl: 'https://images.unsplash.com/photo-1583394838336-acd977736f90?w=400' },
-  { id: 'cat3', name: 'MagSafe & Wireless', slug: 'magsafe-wireless', parentId: null, imageUrl: 'https://images.unsplash.com/photo-1609592424083-d5d14dfc949a?w=400' },
-  { id: 'cat4', name: 'Laptop Power Banks', slug: 'laptop-power-banks', parentId: null, imageUrl: 'https://images.unsplash.com/photo-1609091839311-d5365f9ff1c5?w=400' },
-  { id: 'cat5', name: 'Rugged & Solar', slug: 'rugged-solar', parentId: null, imageUrl: 'https://images.unsplash.com/photo-1622445262465-2481c4574875?w=400' },
-];
+const initialProducts: any[] = [...DEFAULT_PRODUCTS];
+const initialCategories: any[] = [...DEFAULT_CATEGORIES];
 
 const initialCoupons: any[] = [];
 const initialCustomers: any[] = [];
