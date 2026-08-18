@@ -1,5 +1,52 @@
 import { executeQuery, isMysqlConfigured } from "./mysql.server";
 
+// Helper to convert lowercase column names to camelCase for frontend & admin consistency
+const LOWER_TO_CAMEL: Record<string, string> = {
+  saleprice: "salePrice",
+  minstock: "minStock",
+  shortdescription: "shortDescription",
+  costprice: "costPrice",
+  parentid: "parentId",
+  imageurl: "imageUrl",
+  paymentstatus: "paymentStatus",
+  orderstatus: "orderStatus",
+  paymentmethod: "paymentMethod",
+  discountamount: "discountAmount",
+  shippingrate: "shippingRate",
+  trackingnumber: "trackingNumber",
+  totalorders: "totalOrders",
+  totalspend: "totalSpend",
+  discounttype: "discountType",
+  discountvalue: "discountValue",
+  minorder: "minOrder",
+  maxusage: "maxUsage",
+  usagecount: "usageCount",
+  orderid: "orderId",
+};
+
+function normalizeRow(row: any): any {
+  if (!row || typeof row !== "object") return row;
+  const n: any = {};
+  for (const k of Object.keys(row)) {
+    const key = LOWER_TO_CAMEL[k.toLowerCase()] || k;
+    let val = row[k];
+    if (typeof val === "string" && (val.startsWith("[") || val.startsWith("{"))) {
+      try {
+        val = JSON.parse(val);
+      } catch {
+        // Leave string as is if not valid JSON
+      }
+    }
+    n[key] = val;
+  }
+  return n;
+}
+
+function normalizeRows(rows: any[]): any[] {
+  if (!Array.isArray(rows)) return [];
+  return rows.map(normalizeRow);
+}
+
 // CORS Response Helper
 function corsResponse(body: any, status = 200) {
   return new Response(typeof body === "string" ? body : JSON.stringify(body), {
@@ -7,7 +54,7 @@ function corsResponse(body: any, status = 200) {
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
       "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
     },
   });
@@ -33,7 +80,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       if (request.method === "GET") {
         if (!isMysqlConfigured()) return corsResponse({ success: false, data: [], error: "DB not configured" });
         const rows = await executeQuery("SELECT * FROM products ORDER BY created_at DESC");
-        return corsResponse({ success: true, data: rows });
+        return corsResponse({ success: true, data: normalizeRows(rows) });
       }
 
       if (request.method === "POST") {
@@ -64,6 +111,10 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
             specifications = VALUES(specifications),
             costprice = VALUES(costprice)
         `;
+
+        const featuresVal = typeof data.features === "string" ? data.features : JSON.stringify(data.features || []);
+        const specsVal = typeof data.specifications === "string" ? data.specifications : JSON.stringify(data.specifications || {});
+
         const params = [
           data.id,
           data.name,
@@ -80,8 +131,8 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
           data.rating ?? 4.5,
           data.reviews ?? 0,
           data.badge || null,
-          JSON.stringify(data.features || []),
-          JSON.stringify(data.specifications || {}),
+          featuresVal,
+          specsVal,
           data.costPrice ?? 0,
         ];
         await executeQuery(sql, params);
@@ -99,10 +150,12 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     // ─── CATEGORIES ───────────────────────────────────────────────────────────
     if (pathname === "/api/admin/categories" || pathname === "/api/categories") {
       if (request.method === "GET") {
+        if (!isMysqlConfigured()) return corsResponse({ success: false, data: [], error: "DB not configured" });
         const rows = await executeQuery("SELECT * FROM categories ORDER BY created_at ASC");
-        return corsResponse({ success: true, data: rows });
+        return corsResponse({ success: true, data: normalizeRows(rows) });
       }
       if (request.method === "POST") {
+        if (!isMysqlConfigured()) return corsResponse({ success: false, error: "DB not configured" }, 500);
         const data = await request.json();
         const sql = `
           INSERT INTO categories (id, name, slug, parentid, imageurl)
@@ -126,10 +179,12 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     // ─── ORDERS ───────────────────────────────────────────────────────────────
     if (pathname === "/api/admin/orders" || pathname === "/api/orders") {
       if (request.method === "GET") {
+        if (!isMysqlConfigured()) return corsResponse({ success: false, data: [], error: "DB not configured" });
         const rows = await executeQuery("SELECT * FROM orders ORDER BY created_at DESC");
-        return corsResponse({ success: true, data: rows });
+        return corsResponse({ success: true, data: normalizeRows(rows) });
       }
       if (request.method === "POST") {
+        if (!isMysqlConfigured()) return corsResponse({ success: false, error: "DB not configured" }, 500);
         const data = await request.json();
         const sql = `
           INSERT INTO orders (
@@ -157,13 +212,13 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
           data.customer,
           data.email,
           data.phone,
-          JSON.stringify(data.items || []),
+          typeof data.items === "string" ? data.items : JSON.stringify(data.items || []),
           data.total,
-          data.paymentStatus,
-          data.orderStatus,
-          data.date,
-          data.address,
-          data.paymentMethod,
+          data.paymentStatus || "Pending",
+          data.orderStatus || "Processing",
+          data.date || new Date().toISOString(),
+          data.address || "",
+          data.paymentMethod || "COD",
           data.discountAmount ?? 0,
           data.shippingRate ?? 0,
           data.trackingNumber || null,
@@ -174,7 +229,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       if (request.method === "DELETE") {
         const id = url.searchParams.get("id");
         if (id) {
-          await executeQuery("DELETE FROM payments WHERE orderid = ?", [id]);
+          try { await executeQuery("DELETE FROM payments WHERE orderid = ?", [id]); } catch {}
           await executeQuery("DELETE FROM orders WHERE id = ?", [id]);
         }
         return corsResponse({ success: true });
@@ -184,10 +239,12 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     // ─── CUSTOMERS ────────────────────────────────────────────────────────────
     if (pathname === "/api/admin/customers") {
       if (request.method === "GET") {
+        if (!isMysqlConfigured()) return corsResponse({ success: false, data: [], error: "DB not configured" });
         const rows = await executeQuery("SELECT * FROM customers ORDER BY created_at DESC");
-        return corsResponse({ success: true, data: rows });
+        return corsResponse({ success: true, data: normalizeRows(rows) });
       }
       if (request.method === "POST") {
+        if (!isMysqlConfigured()) return corsResponse({ success: false, error: "DB not configured" }, 500);
         const data = await request.json();
         const sql = `
           INSERT INTO customers (id, name, email, phone, address, city, totalorders, totalspend, notes, status)

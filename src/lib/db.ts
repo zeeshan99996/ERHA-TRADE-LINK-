@@ -42,7 +42,7 @@ export async function hashPassword(password: string): Promise<string> {
 
 // ─── LOCAL STORAGE KEYS ───────────────────────────────────────────────────────
 const KEYS = {
-  PRODUCTS: 'erha_products_v5',
+  PRODUCTS: 'erha_products_v6',
   CATEGORIES: 'erha_categories_v2',
   ORDERS: 'erha_orders_v2',
   CUSTOMERS: 'erha_customers_v2',

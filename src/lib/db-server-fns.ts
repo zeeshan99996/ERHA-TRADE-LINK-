@@ -102,6 +102,9 @@ export const saveProductServerFn = createServerFn({ method: "POST" })
           specifications = VALUES(specifications),
           costprice = VALUES(costprice)
       `;
+      const featuresVal = typeof data.features === "string" ? data.features : JSON.stringify(data.features || []);
+      const specsVal = typeof data.specifications === "string" ? data.specifications : JSON.stringify(data.specifications || {});
+
       const params = [
         data.id,
         data.name,
@@ -111,15 +114,15 @@ export const saveProductServerFn = createServerFn({ method: "POST" })
         data.stock ?? 0,
         data.minStock ?? 10,
         data.status || 'Active',
-        data.shortDescription || null,
+        data.shortDescription || data.description || null,
         data.image || null,
         data.brand || 'ERHA',
         data.sku || null,
         data.rating ?? 4.5,
         data.reviews ?? 0,
         data.badge || null,
-        JSON.stringify(data.features || []),
-        JSON.stringify(data.specifications || {}),
+        featuresVal,
+        specsVal,
         data.costPrice ?? 0,
       ];
       await executeQuery(sql, params);

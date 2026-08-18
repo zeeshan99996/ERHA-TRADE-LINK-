@@ -34,8 +34,8 @@ CREATE TABLE IF NOT EXISTS `products` (
     `stock` INT NOT NULL DEFAULT 0,
     `minstock` INT NOT NULL DEFAULT 10,
     `status` VARCHAR(50) NOT NULL DEFAULT 'Active',
-    `shortdescription` TEXT DEFAULT NULL,
-    `image` TEXT DEFAULT NULL,
+    `shortdescription` LONGTEXT DEFAULT NULL,
+    `image` LONGTEXT DEFAULT NULL,
     `brand` VARCHAR(100) DEFAULT 'ERHA',
     `sku` VARCHAR(100) DEFAULT NULL,
     `rating` DECIMAL(3,2) DEFAULT 4.50,
@@ -155,7 +155,7 @@ CREATE TABLE IF NOT EXISTS `categories` (
     `name` VARCHAR(255) NOT NULL,
     `slug` VARCHAR(255) NOT NULL,
     `parentid` VARCHAR(100) DEFAULT NULL,
-    `imageurl` TEXT DEFAULT NULL,
+    `imageurl` LONGTEXT DEFAULT NULL,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
