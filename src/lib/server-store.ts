@@ -121,105 +121,12 @@ export const DEFAULT_PRODUCTS: any[] = [
       "Charging": "Type-C + Qi Wireless"
     },
     costPrice: 2600
-  },
-  {
-    id: "prd-erha-magsafe",
-    name: "ERHA MagSafe 10K Magnetic Wireless Power Bank",
-    category: "MagSafe & Wireless",
-    price: 6500,
-    salePrice: 4999,
-    stock: 45,
-    minStock: 5,
-    status: "Active",
-    shortDescription: "Ultra-slim 10,000mAh magnetic wireless power bank with premium leather finish, strong N52 magnets, and built-in kickstand.",
-    image: "/products/magsafe_power_bank.png",
-    brand: "ERHA",
-    sku: "ERH-MAG-005",
-    rating: 4.8,
-    reviews: 124,
-    badge: "Featured",
-    features: [
-      "15W MagSafe Magnetic Wireless Fast Charging",
-      "20W Power Delivery USB-C Bidirectional Fast Port",
-      "Foldable Leather Kickstand for Hands-Free Viewing",
-      "Smart LED Battery Status Display"
-    ],
-    specifications: {
-      "Capacity": "10,000mAh / 37Wh",
-      "Wireless Output": "5W / 7.5W / 10W / 15W",
-      "USB-C Output": "20W Max (5V/3A, 9V/2.22A, 12V/1.67A)",
-      "Dimensions": "104 x 68 x 16 mm"
-    },
-    costPrice: 3000
-  },
-  {
-    id: "prd-erha-powerstation-20k",
-    name: "ERHA PowerStation 20K SuperPD 65W Laptop Power Bank",
-    category: "Laptop Power Banks",
-    price: 9999,
-    salePrice: 7499,
-    stock: 30,
-    minStock: 5,
-    status: "Active",
-    shortDescription: "Heavy-duty 20,000mAh laptop-class power bank with massive 65W Power Delivery output for MacBooks, Dell, HP, tablets, and phones.",
-    image: "/products/laptop_power_bank.png",
-    brand: "ERHA",
-    sku: "ERH-PD65-006",
-    rating: 4.9,
-    reviews: 89,
-    badge: "Heavy Duty",
-    features: [
-      "Massive 65W USB-C Output to Charge Laptops at Full Speed",
-      "20,000mAh Capacity (Charges iPhone 4x, MacBook 1.2x)",
-      "3-Port Simultaneous Fast Charging (2x USB-C, 1x USB-A)",
-      "Aircraft-Approved Aluminum Alloy Chassis"
-    ],
-    specifications: {
-      "Capacity": "20,000mAh / 74Wh",
-      "USB-C Output": "65W Max (20V/3.25A)",
-      "USB-A Output": "22.5W Max",
-      "Weight": "395g"
-    },
-    costPrice: 4800
-  },
-  {
-    id: "prd-erha-hyper-40k",
-    name: "ERHA Hyper PowerStation Mega 40K High Capacity",
-    category: "High Capacity",
-    price: 14500,
-    salePrice: 11999,
-    stock: 20,
-    minStock: 3,
-    status: "Active",
-    shortDescription: "Colossal 40,000mAh high-capacity charging station with 100W dual-way PD, multi-port hub, and built-in emergency outdoor flashlight.",
-    image: "/products/hyper_power_station.png",
-    brand: "ERHA",
-    sku: "ERH-HYP-007",
-    rating: 5.0,
-    reviews: 41,
-    badge: "Ultimate Power",
-    features: [
-      "Colossal 40,000mAh Power Capacity",
-      "100W Dual-Way Ultra-Fast Power Delivery",
-      "Charges up to 4 Devices Simultaneously",
-      "Multi-Mode Ultra-Bright Emergency LED Lamp"
-    ],
-    specifications: {
-      "Capacity": "40,000mAh / 148Wh",
-      "Max Combined Output": "100W",
-      "Ports": "2x USB-C PD, 2x USB-A QC 3.0",
-      "Weight": "680g"
-    },
-    costPrice: 7500
   }
 ];
 
 export const DEFAULT_CATEGORIES: any[] = [
   { id: 'cat1', name: 'Ultra Compact', slug: 'ultra-compact', parentId: null, imageUrl: '/products/pzx_v91_power_bank.png' },
   { id: 'cat2', name: 'Wireless Earbuds', slug: 'wireless-earbuds', parentId: null, imageUrl: '/products/zoro_zt1_earbuds.png' },
-  { id: 'cat3', name: 'MagSafe & Wireless', slug: 'magsafe-wireless', parentId: null, imageUrl: '/products/magsafe_power_bank.png' },
-  { id: 'cat4', name: 'Laptop Power Banks', slug: 'laptop-power-banks', parentId: null, imageUrl: '/products/laptop_power_bank.png' },
-  { id: 'cat5', name: 'High Capacity', slug: 'high-capacity', parentId: null, imageUrl: '/products/hyper_power_station.png' },
 ];
 
 // Global in-memory storage holding live updates
