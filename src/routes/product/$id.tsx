@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { createFileRoute, Link, useParams, useNavigate } from "@tanstack/react-router";
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
-import { db } from "@/lib/supabase";
+import { db } from "@/lib/db";
 import { addToCart } from "@/lib/cart";
 import { openCartDrawer } from "@/components/site/CartDrawer";
 import { WhatsAppOrderModal } from "@/components/site/WhatsAppOrderModal";
@@ -10,45 +10,40 @@ import { toast } from "sonner";
 import { Star, ShieldCheck, Truck, RefreshCw, Zap, Plus, Minus, ArrowLeft, MessageCircle } from "lucide-react";
 
 export const Route = createFileRoute("/product/$id")({
-  head: ({ params }) => {
-    // We don't have direct access to localStorage in static meta generator, but we can do a fallback
-    return {
-      meta: [
-        { title: `Premium Product | ERHA Trade Link` },
-        { name: "description", content: "Buy high performance tech and charging accessories with warranty and fast delivery nationwide from ERHA Trade Link Multan." }
-      ],
-    };
+  loader: async ({ params }) => {
+    try {
+      const product = await db.getProduct(params.id);
+      const all = await db.getProducts();
+      const related = (all || [])
+        .filter((p: any) => p && p.id && product && p.category === product.category && String(p.id).trim().toLowerCase() !== String(product.id).trim().toLowerCase() && (p.status === "Active" || !p.status))
+        .slice(0, 4);
+      return { product: product || null, related };
+    } catch {
+      return { product: null, related: [] };
+    }
   },
+  head: () => ({
+    meta: [
+      { title: `Premium Product | ERHA Trade Link` },
+      { name: "description", content: "Buy high performance tech and charging accessories with warranty and fast delivery nationwide from ERHA Trade Link Multan." }
+    ],
+  }),
   component: ProductDetailComponent,
 });
 
 function ProductDetailComponent() {
   const { id } = useParams({ from: "/product/$id" });
+  const loaderData = Route.useLoaderData() as { product: any; related: any[] } | undefined;
   const navigate = useNavigate();
   
-  const [product, setProduct] = useState<any | null>(null);
+  const [product, setProduct] = useState<any | null>(loaderData?.product || null);
   const [quantity, setQuantity] = useState(1);
-  const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
+  const [relatedProducts, setRelatedProducts] = useState<any[]>(loaderData?.related || []);
   const [isWaModalOpen, setIsWaModalOpen] = useState(false);
 
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [imageTilt, setImageTilt] = useState({ x: 0, y: 0 });
   const [isImageHovered, setIsImageHovered] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-
-  const [isMounted, setIsMounted] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width - 0.5;
-    const y = (e.clientY - rect.top) / rect.height - 0.5;
-    setMousePos({ x, y });
-  };
-
-  const handleMouseLeave = () => {
-    setMousePos({ x: 0, y: 0 });
-  };
 
   const handleImageMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -64,100 +59,39 @@ function ProductDetailComponent() {
   };
 
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isMounted) return;
-
-    const loadProduct = async () => {
+    let isCancelled = false;
+    const syncProduct = async () => {
       try {
-        setIsLoading(true);
-        // Fetch single product directly (extremely fast)
         const found = await db.getProduct(id);
-        
-        if (found) {
+        if (!isCancelled && found) {
           setProduct(found);
-          // Set loading to false early so details show up instantly!
-          setIsLoading(false);
-          
-          // Fetch related products asynchronously in the background
-          db.getProducts().then((products) => {
-            if (products && Array.isArray(products)) {
-              const related = products
-                .filter((p) => p && p.id && p.category && found.category && p.category === found.category && String(p.id).trim().toLowerCase() !== String(found.id).trim().toLowerCase() && p.status === "Active")
-                .slice(0, 4);
-              setRelatedProducts(related);
-            }
-          }).catch(err => console.error("Error loading related products:", err));
-        } else {
-          setProduct(null);
-          setIsLoading(false);
+          const all = await db.getProducts();
+          if (!isCancelled && Array.isArray(all)) {
+            const rel = all
+              .filter((p: any) => p && p.id && found && p.category === found.category && String(p.id).trim().toLowerCase() !== String(found.id).trim().toLowerCase() && (p.status === "Active" || !p.status))
+              .slice(0, 4);
+            setRelatedProducts(rel);
+          }
         }
-      } catch (err) {
-        console.error("Error loading product:", err);
-        setProduct(null);
-        setIsLoading(false);
+      } catch (e) {
+        console.warn("Sync product error:", e);
       }
     };
 
-    loadProduct();
+    if (!loaderData?.product || loaderData.product.id !== id) {
+      syncProduct();
+    }
     
-    // Register window storage listener to update UI when background SWR finishes
-    window.addEventListener("storage", loadProduct);
-    
-    // Reset quantity and active image on product change
+    window.addEventListener("storage", syncProduct);
     setQuantity(1);
     setSelectedImageIndex(0);
-    
-    // Scroll to top
     window.scrollTo(0, 0);
 
-    return () => window.removeEventListener("storage", loadProduct);
-  }, [id, isMounted]);
-
-  if (!isMounted || isLoading) {
-    return (
-      <div className="min-h-screen bg-[#fafafc] flex flex-col">
-        <Header />
-        <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 w-full animate-pulse flex-1">
-          {/* Back Link skeleton */}
-          <div className="mb-6 h-4 w-24 bg-slate-200 rounded-full" />
-          
-          {/* Main Grid */}
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-12 bg-white rounded-3xl border border-slate-100 p-6 sm:p-10 shadow-soft">
-            {/* Left Column: Image skeleton */}
-            <div className="lg:col-span-6 flex flex-col gap-4">
-              <div className="aspect-square w-full bg-slate-100 rounded-2xl" />
-              <div className="flex gap-3 justify-center">
-                <div className="size-16 bg-slate-100 rounded-xl" />
-                <div className="size-16 bg-slate-100 rounded-xl" />
-                <div className="size-16 bg-slate-100 rounded-xl" />
-              </div>
-            </div>
-            
-            {/* Right Column: Info skeleton */}
-            <div className="lg:col-span-6 flex flex-col space-y-6 justify-center">
-              <div className="h-6 w-20 bg-slate-100 rounded-full" />
-              <div className="h-10 w-3/4 bg-slate-100 rounded-lg" />
-              <div className="h-4 w-32 bg-slate-100 rounded-full" />
-              <div className="h-8 w-40 bg-slate-100 rounded-full" />
-              <div className="h-6 w-36 bg-slate-100 rounded-full" />
-              
-              <div className="space-y-2">
-                <div className="h-4 w-full bg-slate-100 rounded-full" />
-                <div className="h-4 w-5/6 bg-slate-100 rounded-full" />
-              </div>
-              
-              <div className="h-12 w-full bg-slate-100 rounded-xl" />
-              <div className="h-12 w-full bg-slate-100 rounded-xl" />
-            </div>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
+    return () => {
+      isCancelled = true;
+      window.removeEventListener("storage", syncProduct);
+    };
+  }, [id, loaderData]);
 
   if (!product) {
     return (
@@ -208,10 +142,10 @@ function ProductDetailComponent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#fafafc]">
+    <div className="min-h-screen bg-[#fafafc] flex flex-col">
       <Header />
 
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 flex-1 w-full">
         {/* Back Link */}
         <div className="mb-6">
           <Link
@@ -226,37 +160,31 @@ function ProductDetailComponent() {
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-12 bg-white rounded-3xl border border-slate-100 p-6 sm:p-10 shadow-soft mb-12">
           
           {/* Left Column: Image Showcase */}
-          <div className="lg:col-span-6 flex flex-col gap-5">
+          <div className="lg:col-span-6 flex flex-col gap-5 items-center">
             <div 
               onMouseMove={handleImageMouseMove}
               onMouseLeave={handleImageMouseLeave}
-              className="relative rounded-2xl overflow-hidden border border-slate-100 bg-[#f8f9fa] aspect-square w-full transition-all duration-300 shadow-sm flex items-center justify-center p-6"
+              className="relative rounded-2xl overflow-hidden border border-slate-100 bg-[#f8f9fa] aspect-square w-full max-w-[500px] shadow-sm flex items-center justify-center p-6 sm:p-8"
               style={{
                 transform: isImageHovered
-                  ? `perspective(1000px) rotateY(${imageTilt.x * 8}deg) rotateX(${imageTilt.y * -8}deg) scale(1.01)`
-                  : "perspective(1000px) rotateY(0deg) rotateX(0deg) scale(1)",
+                  ? `perspective(1000px) rotateY(${imageTilt.x * 6}deg) rotateX(${imageTilt.y * -6}deg)`
+                  : "perspective(1000px) rotateY(0deg) rotateX(0deg)",
                 transformStyle: "preserve-3d",
-                transition: isImageHovered
-                  ? "none"
-                  : "transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)",
+                transition: isImageHovered ? "none" : "transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)",
               }}
             >
               <img
                 src={activeImage}
                 alt={product.name}
-                className="max-h-[85%] max-w-[85%] object-contain transition-transform duration-500"
+                className="max-h-[85%] max-w-[85%] object-contain select-none"
                 style={{
-                  transform: isImageHovered ? "translateZ(20px)" : "translateZ(0px)",
+                  transform: isImageHovered ? "translateZ(15px)" : "translateZ(0px)",
                   transition: "transform 0.3s ease-out",
                 }}
               />
               {product.badge && (
                 <span 
                   className="absolute left-4 top-4 rounded-full bg-brand px-3 py-1 text-xs font-bold text-white uppercase tracking-wider shadow-sm"
-                  style={{
-                    transform: isImageHovered ? "translateZ(30px)" : "translateZ(0px)",
-                    transition: "transform 0.3s ease-out",
-                  }}
                 >
                   {product.badge}
                 </span>
@@ -264,10 +192,6 @@ function ProductDetailComponent() {
               {hasDiscount && (
                 <span 
                   className="absolute right-4 top-4 rounded-full bg-rose-500 px-3 py-1 text-xs font-bold text-white uppercase tracking-wider shadow-sm"
-                  style={{
-                    transform: isImageHovered ? "translateZ(30px)" : "translateZ(0px)",
-                    transition: "transform 0.3s ease-out",
-                  }}
                 >
                   {discountPercent}% OFF
                 </span>
