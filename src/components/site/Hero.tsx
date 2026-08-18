@@ -147,29 +147,12 @@ export function Hero({ products = [] }: HeroProps) {
   useEffect(() => {
     if (products.length < 1) return;
     const active = products.filter((p) => p.status === "Active" || !p.status);
-    if (active.length === 0) return;
-    
-    // Sort PZX V91 to the first position
-    const pzxIdx = active.findIndex(
-      (p) =>
-        p &&
-        (String(p.id).toLowerCase() === "prd-pzx-v91" ||
-          String(p.name).toLowerCase().includes("pzx v91") ||
-          String(p.name).toLowerCase().includes("pzx"))
-    );
-    let ordered = active;
-    if (pzxIdx > 0) {
-      const pzx = active[pzxIdx];
-      const rest = active.filter((_, i) => i !== pzxIdx);
-      ordered = [pzx, ...rest];
-    }
-
     const built: [any, any][] = [];
-    for (let i = 0; i + 1 < ordered.length; i += 2) {
-      built.push([ordered[i], ordered[i + 1]]);
+    for (let i = 0; i + 1 < active.length; i += 2) {
+      built.push([active[i], active[i + 1]]);
     }
-    if (ordered.length === 1) built.push([ordered[0], ordered[0]]);
-    else if (ordered.length % 2 === 1) built.push([ordered[ordered.length - 1], ordered[0]]);
+    if (active.length === 1) built.push([active[0], active[0]]);
+    else if (active.length % 2 === 1) built.push([active[active.length - 1], active[0]]);
     setPairs(built);
     setIdx(0);
   }, [products]);

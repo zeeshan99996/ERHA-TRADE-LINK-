@@ -29,23 +29,6 @@ export const Route = createFileRoute("/")({
   component: Index,
 } as any);
 
-function sortPzxFirst(items: any[]) {
-  if (!items || items.length <= 1) return items;
-  const idx = items.findIndex(
-    (p) =>
-      p &&
-      (String(p.id).toLowerCase() === "prd-pzx-v91" ||
-        String(p.name).toLowerCase().includes("pzx v91") ||
-        String(p.name).toLowerCase().includes("pzx"))
-  );
-  if (idx > 0) {
-    const pzx = items[idx];
-    const rest = items.filter((_, i) => i !== idx);
-    return [pzx, ...rest];
-  }
-  return items;
-}
-
 function Index() {
   const [featured, setFeatured] = useState<any[]>([]);
 
@@ -53,7 +36,7 @@ function Index() {
     const loadProducts = async () => {
       const prods = await db.getProducts();
       const active = prods.filter((p) => p.status === "Active" || !p.status);
-      setFeatured(sortPzxFirst(active));
+      setFeatured(active);
     };
     loadProducts();
     window.addEventListener("storage", loadProducts);
