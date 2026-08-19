@@ -9,6 +9,14 @@ import { toast } from "sonner";
 import { ShoppingCart, Star, Zap } from "lucide-react";
 
 export const Route = createFileRoute("/shop")({
+  loader: async () => {
+    try {
+      const prods = await db.getProducts();
+      return { products: (prods || []).filter((p: any) => p && (p.status === "Active" || !p.status)) };
+    } catch {
+      return { products: [] };
+    }
+  },
   head: () => ({
     meta: [
       { title: "Shop Premium Tech & Accessories | ERHA Trade Link" },
@@ -205,20 +213,23 @@ function ProductCard({ p, onAddToCart }: { p: any; onAddToCart: (p: any, e: Reac
    Page component
 ──────────────────────────────────────────── */
 function ShopComponent() {
-  const [products, setProducts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const loaderData = Route.useLoaderData() as { products: any[] } | undefined;
+  const [products, setProducts] = useState<any[]>(loaderData?.products || []);
+  const [loading, setLoading] = useState(!loaderData?.products || loaderData.products.length === 0);
 
   useEffect(() => {
     const load = async () => {
       const prods = await db.getProducts();
-      const active = prods.filter((p) => p.status === "Active" || !p.status);
+      const active = (prods || []).filter((p: any) => p && (p.status === "Active" || !p.status));
       setProducts(active);
       setLoading(false);
     };
-    load();
+    if (!loaderData?.products || loaderData.products.length === 0) {
+      load();
+    }
     window.addEventListener("storage", load);
     return () => window.removeEventListener("storage", load);
-  }, []);
+  }, [loaderData]);
 
   const handleAddToCart = (product: any, e: React.MouseEvent) => {
     e.preventDefault();

@@ -62,16 +62,32 @@ function normalizeRows(rows: any[]): any[] {
   return rows.map(normalizeRow);
 }
 
-// CORS Response Helper
-function corsResponse(body: any, status = 200) {
+// High-speed in-memory API cache (60s TTL)
+let apiProductsCache: { data: any[] | null; timestamp: number } = { data: null, timestamp: 0 };
+let apiCategoriesCache: { data: any[] | null; timestamp: number } = { data: null, timestamp: 0 };
+const API_CACHE_TTL = 60_000;
+
+function invalidateApiCache() {
+  apiProductsCache = { data: null, timestamp: 0 };
+  apiCategoriesCache = { data: null, timestamp: 0 };
+}
+
+// CORS Response Helper with Edge Cache support
+function corsResponse(body: any, status = 200, isCacheable = false) {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
+  };
+  if (isCacheable) {
+    headers["Cache-Control"] = "public, s-maxage=30, stale-while-revalidate=120";
+  } else {
+    headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
+  }
   return new Response(typeof body === "string" ? body : JSON.stringify(body), {
     status,
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
-    },
+    headers,
   });
 }
 
@@ -93,19 +109,27 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     // ─── PRODUCTS ─────────────────────────────────────────────────────────────
     if (pathname === "/api/admin/products" || pathname === "/api/products") {
       if (request.method === "GET") {
+        const now = Date.now();
+        if (apiProductsCache.data && now - apiProductsCache.timestamp < API_CACHE_TTL) {
+          return corsResponse({ success: true, data: apiProductsCache.data }, 200, true);
+        }
+
         if (isMysqlConfigured()) {
           try {
             const rows = await executeQuery("SELECT * FROM products ORDER BY created_at DESC");
             if (rows && rows.length > 0) {
               const normalized = normalizeRows(rows);
               setMemoryProducts(normalized);
-              return corsResponse({ success: true, data: normalized });
+              apiProductsCache = { data: normalized, timestamp: now };
+              return corsResponse({ success: true, data: normalized }, 200, true);
             }
           } catch (mysqlErr: any) {
             console.warn("[API Router] MySQL query warning, serving from resilient memory store:", mysqlErr.message);
           }
         }
-        return corsResponse({ success: true, data: getMemoryProducts() });
+        const mem = getMemoryProducts();
+        apiProductsCache = { data: mem, timestamp: now };
+        return corsResponse({ success: true, data: mem }, 200, true);
       }
 
       if (request.method === "POST") {
@@ -168,6 +192,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
             console.warn("[API Router] MySQL write warning (product saved to resilient store):", mysqlErr.message);
           }
         }
+        invalidateApiCache();
         return corsResponse({ success: true, message: "Product saved successfully", data: data });
       }
 
@@ -182,6 +207,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         if (!id) return corsResponse({ success: false, error: "Product id required" }, 400);
 
         deleteMemoryProduct(id);
+        invalidateApiCache();
 
         if (isMysqlConfigured()) {
           try {
@@ -197,21 +223,31 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     // ─── CATEGORIES ───────────────────────────────────────────────────────────
     if (pathname === "/api/admin/categories" || pathname === "/api/categories") {
       if (request.method === "GET") {
+        const now = Date.now();
+        if (apiCategoriesCache.data && now - apiCategoriesCache.timestamp < API_CACHE_TTL) {
+          return corsResponse({ success: true, data: apiCategoriesCache.data }, 200, true);
+        }
+
         if (isMysqlConfigured()) {
           try {
             const rows = await executeQuery("SELECT * FROM categories ORDER BY created_at ASC");
             if (rows && rows.length > 0) {
-              return corsResponse({ success: true, data: normalizeRows(rows) });
+              const normalized = normalizeRows(rows);
+              apiCategoriesCache = { data: normalized, timestamp: now };
+              return corsResponse({ success: true, data: normalized }, 200, true);
             }
           } catch (mysqlErr: any) {
             console.warn("[API Router] MySQL categories warning:", mysqlErr.message);
           }
         }
-        return corsResponse({ success: true, data: getMemoryCategories() });
+        const mem = getMemoryCategories();
+        apiCategoriesCache = { data: mem, timestamp: now };
+        return corsResponse({ success: true, data: mem }, 200, true);
       }
       if (request.method === "POST") {
         const data = await request.json();
         upsertMemoryCategory(data);
+        invalidateApiCache();
         if (isMysqlConfigured()) {
           try {
             const sql = `
@@ -234,6 +270,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         const id = url.searchParams.get("id");
         if (id) {
           deleteMemoryCategory(id);
+          invalidateApiCache();
           if (isMysqlConfigured()) {
             try { await executeQuery("DELETE FROM categories WHERE id = ?", [id]); } catch {}
           }

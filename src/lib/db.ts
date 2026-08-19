@@ -115,25 +115,64 @@ function setStorage<T>(key: string, val: T) {
   }
 }
 
+let memoryClientProducts: any[] | null = null;
+let lastSyncProductsTime = 0;
+let memoryClientCategories: any[] | null = null;
+let lastSyncCategoriesTime = 0;
+
 export const db = {
   // ─── PRODUCTS ─────────────────────────────────────────────────────────────
   getProducts: async (): Promise<any[]> => {
+    const now = Date.now();
+    const cached = getStorage(KEYS.PRODUCTS, initialProducts);
+
+    // If client memory is populated and fresh (< 20s), return immediately (0ms)
+    if (memoryClientProducts && (now - lastSyncProductsTime < 20000)) {
+      return memoryClientProducts;
+    }
+
+    if (!memoryClientProducts && Array.isArray(cached) && cached.length > 0) {
+      memoryClientProducts = cached;
+    }
+
     try {
       const mysqlRes = await fetchProductsServerFn();
-      if (mysqlRes.success && Array.isArray(mysqlRes.data)) {
+      if (mysqlRes && mysqlRes.success && Array.isArray(mysqlRes.data)) {
+        memoryClientProducts = mysqlRes.data;
+        lastSyncProductsTime = Date.now();
         setStorage(KEYS.PRODUCTS, mysqlRes.data);
         return mysqlRes.data;
       }
     } catch (e) {
-      console.warn("Hostinger MySQL products sync:", e);
+      console.warn("Products sync notice (serving instant cache):", e);
     }
-    const cached = getStorage(KEYS.PRODUCTS, initialProducts);
-    return cached;
+
+    return memoryClientProducts || cached || initialProducts;
   },
 
   getProduct: async (id: string): Promise<any | null> => {
+    if (!id) return null;
+    const targetId = String(id).trim().toLowerCase();
+    
+    // Check in-memory list first (0ms)
+    if (memoryClientProducts && memoryClientProducts.length > 0) {
+      const foundMem = memoryClientProducts.find(
+        (p: any) => p && p.id && String(p.id).trim().toLowerCase() === targetId
+      );
+      if (foundMem) return foundMem;
+    }
+
+    // Check local storage cache (0ms)
+    const cached = getStorage(KEYS.PRODUCTS, initialProducts);
+    if (Array.isArray(cached)) {
+      const foundLocal = cached.find(
+        (p: any) => p && p.id && String(p.id).trim().toLowerCase() === targetId
+      );
+      if (foundLocal) return foundLocal;
+    }
+
     const products = await db.getProducts();
-    return products.find((p: any) => p && p.id && String(p.id).trim().toLowerCase() === String(id).trim().toLowerCase()) || null;
+    return products.find((p: any) => p && p.id && String(p.id).trim().toLowerCase() === targetId) || null;
   },
 
   saveProduct: async (p: any): Promise<void> => {
@@ -170,17 +209,29 @@ export const db = {
 
   // ─── CATEGORIES ────────────────────────────────────────────────────────────
   getCategories: async (): Promise<any[]> => {
+    const now = Date.now();
+    const cached = getStorage(KEYS.CATEGORIES, initialCategories);
+
+    if (memoryClientCategories && (now - lastSyncCategoriesTime < 20000)) {
+      return memoryClientCategories;
+    }
+
+    if (!memoryClientCategories && Array.isArray(cached) && cached.length > 0) {
+      memoryClientCategories = cached;
+    }
+
     try {
       const mysqlRes = await fetchCategoriesServerFn();
-      if (mysqlRes.success && Array.isArray(mysqlRes.data)) {
+      if (mysqlRes && mysqlRes.success && Array.isArray(mysqlRes.data)) {
+        memoryClientCategories = mysqlRes.data;
+        lastSyncCategoriesTime = Date.now();
         setStorage(KEYS.CATEGORIES, mysqlRes.data);
         return mysqlRes.data;
       }
     } catch (e) {
-      console.warn("Hostinger MySQL getCategories error:", e);
+      console.warn("Categories sync notice (serving instant cache):", e);
     }
-    const cached = getStorage(KEYS.CATEGORIES, initialCategories);
-    return cached;
+    return memoryClientCategories || cached || initialCategories;
   },
 
   saveCategory: async (c: any): Promise<void> => {

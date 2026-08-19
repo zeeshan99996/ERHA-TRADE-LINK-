@@ -1,7 +1,6 @@
 import mysql from 'mysql2/promise';
 
 let pool: mysql.Pool | null = null;
-let schemaEnsured = false;
 
 export function isMysqlConfigured(): boolean {
   return (
@@ -28,8 +27,13 @@ export function getMysqlPool(): mysql.Pool | null {
       database,
       port,
       waitForConnections: true,
-      connectionLimit: 10,
+      connectionLimit: 5,
+      maxIdle: 2,
+      idleTimeout: 60000,
       queueLimit: 0,
+      connectTimeout: 2000,
+      enableKeepAlive: true,
+      keepAliveInitialDelay: 0,
       ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
     });
   }
@@ -37,26 +41,21 @@ export function getMysqlPool(): mysql.Pool | null {
   return pool;
 }
 
-async function ensureSchema(db: mysql.Pool) {
-  if (schemaEnsured) return;
-  schemaEnsured = true;
-  try {
-    await db.execute("ALTER TABLE products MODIFY COLUMN image LONGTEXT NULL");
-  } catch {}
-  try {
-    await db.execute("ALTER TABLE products MODIFY COLUMN shortdescription LONGTEXT NULL");
-  } catch {}
-  try {
-    await db.execute("ALTER TABLE categories MODIFY COLUMN imageurl LONGTEXT NULL");
-  } catch {}
-}
-
 export async function executeQuery<T = any>(sql: string, params: any[] = []): Promise<T[]> {
   const db = getMysqlPool();
   if (!db) {
     throw new Error('Hostinger MySQL Database environment variables (DB_HOST, DB_USER, DB_NAME) are not set.');
   }
-  await ensureSchema(db);
-  const [rows] = await db.execute(sql, params);
-  return rows as T[];
+
+  // Fast timeout promise (1500ms max) to prevent blocking HTTP requests
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error('MySQL Query Timeout (1500ms exceeded)')), 1500)
+  );
+
+  const queryPromise = (async () => {
+    const [rows] = await db.execute(sql, params);
+    return rows as T[];
+  })();
+
+  return Promise.race([queryPromise, timeoutPromise]);
 }

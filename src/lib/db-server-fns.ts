@@ -64,6 +64,16 @@ import {
   deleteMemoryCustomer,
 } from "./server-store";
 
+// High-speed In-Memory Server Cache with 60s TTL
+let serverProductsCache: { data: any[] | null; timestamp: number } = { data: null, timestamp: 0 };
+let serverCategoriesCache: { data: any[] | null; timestamp: number } = { data: null, timestamp: 0 };
+const CACHE_TTL_MS = 60_000;
+
+export function invalidateServerCache() {
+  serverProductsCache = { data: null, timestamp: 0 };
+  serverCategoriesCache = { data: null, timestamp: 0 };
+}
+
 // ─── CHECK CONNECTION SERVER FN ──────────────────────────────────────────────
 export const checkMysqlStatusServerFn = createServerFn({ method: "GET" }).handler(async () => {
   if (!isMysqlConfigured()) return { configured: false, connected: false };
@@ -78,25 +88,34 @@ export const checkMysqlStatusServerFn = createServerFn({ method: "GET" }).handle
 
 // ─── PRODUCTS SERVER FNS ──────────────────────────────────────────────────────
 export const fetchProductsServerFn = createServerFn({ method: "GET" }).handler(async () => {
+  const now = Date.now();
+  if (serverProductsCache.data && now - serverProductsCache.timestamp < CACHE_TTL_MS) {
+    return { success: true, data: serverProductsCache.data };
+  }
+
   if (isMysqlConfigured()) {
     try {
       const rows = await executeQuery("SELECT * FROM products ORDER BY created_at DESC");
       if (rows && rows.length > 0) {
         const normalized = normalizeRows(rows);
         setMemoryProducts(normalized);
+        serverProductsCache = { data: normalized, timestamp: now };
         return { success: true, data: normalized };
       }
     } catch (err: any) {
       console.warn("[fetchProductsServerFn] MySQL warning, returning resilient store:", err.message);
     }
   }
-  return { success: true, data: getMemoryProducts() };
+  const mem = getMemoryProducts();
+  serverProductsCache = { data: mem, timestamp: now };
+  return { success: true, data: mem };
 });
 
 export const saveProductServerFn = createServerFn({ method: "POST" })
   .validator((data: any) => data)
   .handler(async ({ data }) => {
     upsertMemoryProduct(data);
+    invalidateServerCache();
     if (isMysqlConfigured()) {
       try {
         const sql = `
@@ -159,6 +178,7 @@ export const deleteProductServerFn = createServerFn({ method: "POST" })
   .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     deleteMemoryProduct(data.id);
+    invalidateServerCache();
     if (isMysqlConfigured()) {
       try {
         await executeQuery("DELETE FROM products WHERE LOWER(id) = LOWER(?)", [data.id]);
@@ -171,23 +191,33 @@ export const deleteProductServerFn = createServerFn({ method: "POST" })
 
 // ─── CATEGORIES SERVER FNS ────────────────────────────────────────────────────
 export const fetchCategoriesServerFn = createServerFn({ method: "GET" }).handler(async () => {
+  const now = Date.now();
+  if (serverCategoriesCache.data && now - serverCategoriesCache.timestamp < CACHE_TTL_MS) {
+    return { success: true, data: serverCategoriesCache.data };
+  }
+
   if (isMysqlConfigured()) {
     try {
       const rows = await executeQuery("SELECT * FROM categories ORDER BY created_at ASC");
       if (rows && rows.length > 0) {
-        return { success: true, data: normalizeRows(rows) };
+        const normalized = normalizeRows(rows);
+        serverCategoriesCache = { data: normalized, timestamp: now };
+        return { success: true, data: normalized };
       }
     } catch (err: any) {
       console.warn("[fetchCategoriesServerFn] MySQL categories warning:", err.message);
     }
   }
-  return { success: true, data: getMemoryCategories() };
+  const mem = getMemoryCategories();
+  serverCategoriesCache = { data: mem, timestamp: now };
+  return { success: true, data: mem };
 });
 
 export const saveCategoryServerFn = createServerFn({ method: "POST" })
   .validator((data: any) => data)
   .handler(async ({ data }) => {
     upsertMemoryCategory(data);
+    invalidateServerCache();
     if (isMysqlConfigured()) {
       try {
         const sql = `
@@ -211,6 +241,7 @@ export const deleteCategoryServerFn = createServerFn({ method: "POST" })
   .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     deleteMemoryCategory(data.id);
+    invalidateServerCache();
     if (isMysqlConfigured()) {
       try {
         await executeQuery("DELETE FROM categories WHERE id = ?", [data.id]);

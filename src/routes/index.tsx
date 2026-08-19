@@ -9,6 +9,14 @@ import { useState, useEffect } from "react";
 import { db } from "@/lib/supabase";
 
 export const Route = createFileRoute("/")({
+  loader: async () => {
+    try {
+      const prods = await db.getProducts();
+      return { products: (prods || []).filter((p: any) => p && (p.status === "Active" || !p.status)) };
+    } catch {
+      return { products: [] };
+    }
+  },
   head: () => ({
     meta: [
       { title: "ERHA Trade Link International — Premium Tech & Accessories in Multan, Pakistan" },
@@ -30,18 +38,21 @@ export const Route = createFileRoute("/")({
 } as any);
 
 function Index() {
-  const [featured, setFeatured] = useState<any[]>([]);
+  const loaderData = Route.useLoaderData() as { products: any[] } | undefined;
+  const [featured, setFeatured] = useState<any[]>(loaderData?.products || []);
 
   useEffect(() => {
     const loadProducts = async () => {
       const prods = await db.getProducts();
-      const active = prods.filter((p) => p.status === "Active" || !p.status);
+      const active = (prods || []).filter((p: any) => p && (p.status === "Active" || !p.status));
       setFeatured(active);
     };
-    loadProducts();
+    if (!loaderData?.products || loaderData.products.length === 0) {
+      loadProducts();
+    }
     window.addEventListener("storage", loadProducts);
     return () => window.removeEventListener("storage", loadProducts);
-  }, []);
+  }, [loaderData]);
 
   return (
     <div className="min-h-screen bg-background">
