@@ -1,14 +1,18 @@
 import { useState, useEffect, useRef } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
 import { db } from "@/lib/supabase";
 import { addToCart } from "@/lib/cart";
 import { openCartDrawer } from "@/components/site/CartDrawer";
 import { toast } from "sonner";
-import { ShoppingCart, Star, Zap } from "lucide-react";
+import { ShoppingCart, Star, Zap, Search, X, Sparkles, Filter } from "lucide-react";
 
 export const Route = createFileRoute("/shop")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    search: typeof search.search === "string" ? search.search : typeof search.q === "string" ? search.q : "",
+    category: typeof search.category === "string" ? search.category : "All",
+  }),
   loader: async () => {
     try {
       const prods = await db.getProducts();
@@ -31,8 +35,102 @@ export const Route = createFileRoute("/shop")({
 });
 
 /* ────────────────────────────────────────────
+   Smart Search & Category Matching Helpers
+──────────────────────────────────────────── */
+function matchesSearch(product: any, query: string): boolean {
+  if (!query || !query.trim()) return true;
+  const q = query.toLowerCase().trim();
+  const name = String(product.name || "").toLowerCase();
+  const category = String(product.category || "").toLowerCase();
+  const desc = String(product.shortDescription || product.description || "").toLowerCase();
+  const brand = String(product.brand || "").toLowerCase();
+  const sku = String(product.sku || "").toLowerCase();
+
+  // If user searched for power bank variations
+  if (
+    q.includes("power") ||
+    q.includes("bank") ||
+    q.includes("battery") ||
+    q.includes("pzx") ||
+    q.includes("10000") ||
+    q.includes("mah")
+  ) {
+    if (
+      name.includes("power") ||
+      name.includes("bank") ||
+      category.includes("power") ||
+      category.includes("compact") ||
+      desc.includes("power") ||
+      desc.includes("bank")
+    ) {
+      return true;
+    }
+    // If exact earbuds search, don't match power bank
+    if (q.includes("earbud") || q.includes("audio")) {
+      return false;
+    }
+  }
+
+  // If user searched for earbuds / audio variations
+  if (
+    q.includes("ear") ||
+    q.includes("bud") ||
+    q.includes("headphone") ||
+    q.includes("airpod") ||
+    q.includes("audio") ||
+    q.includes("zoro") ||
+    q.includes("tltm") ||
+    q.includes("anc") ||
+    q.includes("enc") ||
+    q.includes("bass") ||
+    q.includes("tws")
+  ) {
+    if (
+      name.includes("earbud") ||
+      name.includes("earbuds") ||
+      name.includes("wireless") ||
+      name.includes("bluetooth") ||
+      category.includes("earbuds") ||
+      category.includes("audio") ||
+      desc.includes("earbuds")
+    ) {
+      return true;
+    }
+    // If query is specifically earbuds, don't match power bank
+    if (!q.includes("power") && !q.includes("bank")) {
+      if (name.includes("power bank")) return false;
+    }
+  }
+
+  // Standard token matching across all product metadata
+  const tokens = q.split(/\s+/).filter(Boolean);
+  return tokens.every(
+    (token) =>
+      name.includes(token) ||
+      category.includes(token) ||
+      desc.includes(token) ||
+      brand.includes(token) ||
+      sku.includes(token)
+  );
+}
+
+function matchesCategory(product: any, cat: string): boolean {
+  if (!cat || cat === "All") return true;
+  const c = cat.toLowerCase();
+  const pCat = String(product.category || "").toLowerCase();
+  const pName = String(product.name || "").toLowerCase();
+
+  if (c.includes("power")) {
+    return pCat.includes("power") || pCat.includes("compact") || pName.includes("power") || pName.includes("bank");
+  }
+  if (c.includes("earbud")) {
+    return pCat.includes("earbuds") || pName.includes("earbuds") || pName.includes("earbud");
+  }
+  return pCat.includes(c);
+}
+
+/* ────────────────────────────────────────────
    Animated heading — letters slide in + glow
-   on hover the whole heading shimmers
 ──────────────────────────────────────────── */
 function AnimatedHeading() {
   const text = "Our Products";
@@ -209,13 +307,28 @@ function ProductCard({ p, onAddToCart }: { p: any; onAddToCart: (p: any, e: Reac
   );
 }
 
+const CATEGORIES = [
+  { id: "All", label: "All Products" },
+  { id: "Power Banks", label: "Power Banks" },
+  { id: "Wireless Earbuds", label: "Wireless Earbuds" },
+];
+
 /* ────────────────────────────────────────────
    Page component
 ──────────────────────────────────────────── */
 function ShopComponent() {
+  const { search: searchParam, category: categoryParam } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+
   const loaderData = Route.useLoaderData() as { products: any[] } | undefined;
   const [products, setProducts] = useState<any[]>(loaderData?.products || []);
   const [loading, setLoading] = useState(!loaderData?.products || loaderData.products.length === 0);
+  const [localSearch, setLocalSearch] = useState(searchParam || "");
+
+  // Sync local input with URL search param
+  useEffect(() => {
+    setLocalSearch(searchParam || "");
+  }, [searchParam]);
 
   useEffect(() => {
     const load = async () => {
@@ -249,13 +362,49 @@ function ShopComponent() {
     openCartDrawer();
   };
 
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    navigate({
+      search: (prev) => ({
+        ...prev,
+        search: localSearch.trim(),
+      }),
+    });
+  };
+
+  const handleClearSearch = () => {
+    setLocalSearch("");
+    navigate({
+      search: (prev) => ({
+        ...prev,
+        search: "",
+      }),
+    });
+  };
+
+  const handleCategorySelect = (catId: string) => {
+    navigate({
+      search: (prev) => ({
+        ...prev,
+        category: catId,
+      }),
+    });
+  };
+
+  // Filter products based on search term & category
+  const filteredProducts = products.filter(
+    (p) => matchesCategory(p, categoryParam) && matchesSearch(p, searchParam)
+  );
+
+  const hasActiveFilters = Boolean(searchParam && searchParam.trim()) || (categoryParam && categoryParam !== "All");
+
   return (
     <div className="min-h-screen bg-[#f8fafd]">
       <Header />
 
-      <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:py-10 sm:px-6 lg:px-8">
         {/* Heading */}
-        <div className="mb-8 flex flex-col items-center text-center gap-2">
+        <div className="mb-6 flex flex-col items-center text-center gap-2">
           <AnimatedHeading />
           <p className="text-sm text-slate-500 max-w-md mt-1">
             Discover our full range of premium tech &amp; charging accessories
@@ -270,6 +419,97 @@ function ShopComponent() {
               marginTop: "6px",
             }}
           />
+        </div>
+
+        {/* Search Bar & Category Filter Controls */}
+        <div className="mb-8 max-w-3xl mx-auto space-y-4">
+          {/* Shop Search Bar */}
+          <form onSubmit={handleSearchSubmit} className="relative">
+            <div className="flex items-center rounded-full bg-white border border-slate-200 shadow-sm pl-4 pr-1.5 py-1.5 focus-within:border-cyan-500 focus-within:ring-2 focus-within:ring-cyan-100 transition-all">
+              <Search className="size-4 text-slate-400 shrink-0" />
+              <input
+                type="text"
+                placeholder="Search power banks, earbuds, accessories..."
+                value={localSearch}
+                onChange={(e) => {
+                  setLocalSearch(e.target.value);
+                  // Real-time instant filtering as user types
+                  navigate({
+                    search: (prev) => ({
+                      ...prev,
+                      search: e.target.value,
+                    }),
+                  });
+                }}
+                className="w-full bg-transparent px-3 py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400"
+              />
+              {localSearch && (
+                <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  className="p-1 text-slate-400 hover:text-slate-600 rounded-full mr-1 cursor-pointer"
+                  title="Clear search"
+                >
+                  <X className="size-4" />
+                </button>
+              )}
+              <button
+                type="submit"
+                className="rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-2 text-xs sm:text-sm font-semibold text-white shadow-sm hover:opacity-95 transition cursor-pointer"
+              >
+                Search
+              </button>
+            </div>
+          </form>
+
+          {/* Category Filter Pills */}
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {CATEGORIES.map((cat) => {
+              const active = (categoryParam || "All") === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => handleCategorySelect(cat.id)}
+                  className={`px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                    active
+                      ? "bg-slate-900 text-white shadow-sm scale-105"
+                      : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:text-slate-900"
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Active Search / Filter Indicator */}
+          {hasActiveFilters && (
+            <div className="flex items-center justify-between bg-cyan-50/70 border border-cyan-200/70 rounded-xl px-4 py-2.5 text-xs text-slate-700">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Sparkles className="size-3.5 text-cyan-600 shrink-0" />
+                <span>
+                  Showing <strong>{filteredProducts.length}</strong> {filteredProducts.length === 1 ? "product" : "products"}
+                  {searchParam && searchParam.trim() ? (
+                    <> for "<strong>{searchParam}</strong>"</>
+                  ) : null}
+                  {categoryParam && categoryParam !== "All" ? (
+                    <> in <strong>{categoryParam}</strong></>
+                  ) : null}
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  setLocalSearch("");
+                  navigate({
+                    search: () => ({ search: "", category: "All" }),
+                  });
+                }}
+                className="text-cyan-700 hover:text-cyan-900 font-semibold underline ml-2 shrink-0 cursor-pointer"
+              >
+                Reset all
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Product grid */}
@@ -289,14 +529,32 @@ function ShopComponent() {
               </div>
             ))}
           </div>
-        ) : products.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 gap-4">
-            <Zap className="size-12 text-slate-200" />
-            <p className="text-slate-500 text-sm font-medium">No products available yet.</p>
+        ) : filteredProducts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 gap-4 bg-white rounded-3xl border border-slate-200/70 p-8 text-center max-w-md mx-auto shadow-sm">
+            <div className="size-16 rounded-full bg-cyan-50 flex items-center justify-center text-cyan-600">
+              <Search className="size-8" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-800">No products found</h3>
+              <p className="text-slate-500 text-xs sm:text-sm mt-1">
+                We couldn't find any products matching "<strong>{searchParam || categoryParam}</strong>".
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setLocalSearch("");
+                navigate({
+                  search: () => ({ search: "", category: "All" }),
+                });
+              }}
+              className="rounded-full bg-slate-900 px-5 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-slate-800 transition cursor-pointer"
+            >
+              View All Products
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {products.map((p) => (
+            {filteredProducts.map((p) => (
               <ProductCard key={p.id} p={p} onAddToCart={handleAddToCart} />
             ))}
           </div>

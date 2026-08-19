@@ -12,7 +12,32 @@ const navItems = [
   { name: "Contact", to: "/contact" }
 ];
 
-const trendingSearches = ["Wireless Earbuds", "Smart Watches", "Power Banks", "Speakers", "Chargers"];
+const trendingSearches = ["Power Banks", "Wireless Earbuds", "Fast Chargers", "Smart Watches"];
+
+function matchesHeaderSearch(product: any, query: string): boolean {
+  if (!query || !query.trim()) return false;
+  const q = query.toLowerCase().trim();
+  const name = String(product.name || "").toLowerCase();
+  const category = String(product.category || "").toLowerCase();
+  const desc = String(product.shortDescription || "").toLowerCase();
+
+  // If user searched for power bank
+  if (q.includes("power") || q.includes("bank") || q.includes("battery") || q.includes("pzx")) {
+    if (name.includes("power") || name.includes("bank") || category.includes("power") || category.includes("compact")) {
+      return true;
+    }
+  }
+
+  // If user searched for earbuds
+  if (q.includes("ear") || q.includes("bud") || q.includes("airpod") || q.includes("zoro") || q.includes("tltm") || q.includes("wireless") || q.includes("audio")) {
+    if (name.includes("earbud") || name.includes("wireless") || category.includes("earbuds") || category.includes("audio")) {
+      return true;
+    }
+  }
+
+  const tokens = q.split(/\s+/).filter(Boolean);
+  return tokens.every((tok) => name.includes(tok) || category.includes(tok) || desc.includes(tok));
+}
 
 export function Header() {
   const [open, setOpen] = useState(false);
@@ -58,7 +83,7 @@ export function Header() {
     setOpen(false);
     navigate({
       to: "/shop",
-      search: { search: searchVal },
+      search: { search: searchVal.trim() },
     });
   };
 
@@ -77,7 +102,11 @@ export function Header() {
     };
   }, []);
 
-  const latestProducts = productsList.filter((p) => p.badge === "New" && p.status === "Active").slice(0, 3);
+  const activeProducts = productsList.filter((p) => p.status === "Active" || !p.status);
+  const latestProducts = activeProducts.slice(0, 3);
+  const liveSearchResults = searchVal.trim()
+    ? activeProducts.filter((p) => matchesHeaderSearch(p, searchVal))
+    : [];
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-xl">
@@ -127,7 +156,10 @@ export function Header() {
               placeholder="Search tech & accessories…"
               className="w-full bg-transparent px-3 py-3 text-sm outline-none placeholder:text-muted-foreground"
               value={searchVal}
-              onChange={(e) => setSearchVal(e.target.value)}
+              onChange={(e) => {
+                setSearchVal(e.target.value);
+                setShowDropdown(true);
+              }}
               onFocus={() => setShowDropdown(true)}
             />
             <button type="submit" className="rounded-full gradient-brand px-5 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:opacity-95 shrink-0 cursor-pointer">
@@ -137,61 +169,121 @@ export function Header() {
 
           {/* Search Dropdown Overlay */}
           {showDropdown && (
-            <div className="absolute top-[calc(100%+8px)] left-0 right-0 z-50 rounded-2xl border border-border bg-card/95 p-5 shadow-glow backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-200">
-              <div className="grid grid-cols-5 gap-6 text-left">
-                {/* Left column: Trending Searches */}
-                <div className="col-span-2 border-r border-border/60 pr-6">
-                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Trending Searches</h4>
-                  <ul className="space-y-2">
-                    {trendingSearches.map((item) => (
-                      <li key={item}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSearchVal(item);
-                            navigate({ to: "/shop", search: { search: item } });
-                            setShowDropdown(false);
-                          }}
-                          className="flex items-center gap-2 text-sm text-ink/80 hover:text-brand transition duration-150 w-full text-left cursor-pointer"
-                        >
-                          <Search className="size-3.5 text-muted-foreground" />
-                          {item}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+            <div className="absolute top-[calc(100%+8px)] left-0 right-0 z-50 rounded-2xl border border-border bg-card/95 p-5 shadow-glow backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-200 max-h-96 overflow-y-auto">
+              {searchVal.trim() ? (
+                /* Live Filtered Results */
+                <div className="space-y-3 text-left">
+                  <div className="flex items-center justify-between border-b border-border/60 pb-2">
+                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Matching Products ({liveSearchResults.length})
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowDropdown(false);
+                        navigate({ to: "/shop", search: { search: searchVal.trim() } });
+                      }}
+                      className="text-xs font-semibold text-brand hover:underline cursor-pointer"
+                    >
+                      View all in shop &rarr;
+                    </button>
+                  </div>
 
-                {/* Right column: Latest Products */}
-                <div className="col-span-3">
-                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Latest Products</h4>
-                  <div className="space-y-3">
-                    {latestProducts.map((p) => (
-                      <Link
-                        key={p.id}
-                        to="/product/$id"
-                        params={{ id: p.id }}
-                        className="flex items-center gap-3 p-1.5 rounded-xl hover:bg-muted/50 transition duration-150 group"
-                        onClick={() => setShowDropdown(false)}
-                      >
-                        <div className="size-12 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
-                          <img src={p.image ? p.image.split('|||')[0] : ''} alt={p.name} className="size-full object-cover group-hover:scale-105 transition" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-semibold truncate group-hover:text-brand transition">{p.name}</div>
-                          <div className="text-xs text-muted-foreground">{p.category}</div>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <div className="text-sm font-bold text-brand">Rs. {p.price.toLocaleString()}</div>
-                          {p.oldPrice && (
-                            <div className="text-xs text-muted-foreground line-through">Rs. {p.oldPrice.toLocaleString()}</div>
-                          )}
-                        </div>
-                      </Link>
-                    ))}
+                  {liveSearchResults.length === 0 ? (
+                    <div className="py-4 text-center text-xs text-muted-foreground">
+                      No products found matching "<strong>{searchVal}</strong>". Press Enter to view all.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {liveSearchResults.map((p) => {
+                        const price = p.salePrice || p.price;
+                        return (
+                          <Link
+                            key={p.id}
+                            to="/product/$id"
+                            params={{ id: p.id }}
+                            className="flex items-center gap-3 p-2 rounded-xl hover:bg-muted/60 transition duration-150 group"
+                            onClick={() => setShowDropdown(false)}
+                          >
+                            <div className="size-12 shrink-0 overflow-hidden rounded-lg border border-border bg-white p-1">
+                              <img src={p.image ? p.image.split('|||')[0] : ''} alt={p.name} className="size-full object-contain group-hover:scale-105 transition" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-semibold truncate group-hover:text-brand transition">{p.name}</div>
+                              <div className="text-xs text-muted-foreground">{p.category}</div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <div className="text-sm font-bold text-brand">Rs. {price.toLocaleString()}</div>
+                              {p.salePrice && p.price > p.salePrice && (
+                                <div className="text-xs text-muted-foreground line-through">Rs. {p.price.toLocaleString()}</div>
+                              )}
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Default Trending & Latest View */
+                <div className="grid grid-cols-5 gap-6 text-left">
+                  {/* Left column: Trending Searches */}
+                  <div className="col-span-2 border-r border-border/60 pr-6">
+                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Trending Searches</h4>
+                    <ul className="space-y-2">
+                      {trendingSearches.map((item) => (
+                        <li key={item}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSearchVal(item);
+                              navigate({ to: "/shop", search: { search: item } });
+                              setShowDropdown(false);
+                            }}
+                            className="flex items-center gap-2 text-sm text-ink/80 hover:text-brand transition duration-150 w-full text-left cursor-pointer"
+                          >
+                            <Search className="size-3.5 text-muted-foreground" />
+                            {item}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Right column: Latest Products */}
+                  <div className="col-span-3">
+                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Latest Products</h4>
+                    <div className="space-y-3">
+                      {latestProducts.map((p) => {
+                        const price = p.salePrice || p.price;
+                        return (
+                          <Link
+                            key={p.id}
+                            to="/product/$id"
+                            params={{ id: p.id }}
+                            className="flex items-center gap-3 p-1.5 rounded-xl hover:bg-muted/50 transition duration-150 group"
+                            onClick={() => setShowDropdown(false)}
+                          >
+                            <div className="size-12 shrink-0 overflow-hidden rounded-lg border border-border bg-white p-1">
+                              <img src={p.image ? p.image.split('|||')[0] : ''} alt={p.name} className="size-full object-contain group-hover:scale-105 transition" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-semibold truncate group-hover:text-brand transition">{p.name}</div>
+                              <div className="text-xs text-muted-foreground">{p.category}</div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <div className="text-sm font-bold text-brand">Rs. {price.toLocaleString()}</div>
+                              {p.salePrice && p.price > p.salePrice && (
+                                <div className="text-xs text-muted-foreground line-through">Rs. {p.price.toLocaleString()}</div>
+                              )}
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
         </form>
@@ -250,52 +342,112 @@ export function Header() {
               {/* Mobile Search Dropdown */}
               {showMobileDropdown && (
                 <div className="absolute top-[calc(100%+6px)] left-0 right-0 z-50 rounded-2xl border border-border bg-card p-4 shadow-glow max-h-80 overflow-y-auto">
-                  <div className="space-y-4 text-left">
-                    <div>
-                      <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Trending Searches</h4>
-                      <div className="flex flex-wrap gap-1.5">
-                        {trendingSearches.map((item) => (
-                          <button
-                            key={item}
-                            type="button"
-                            onClick={() => {
-                              setSearchVal(item);
-                              setShowMobileDropdown(false);
-                              navigate({ to: "/shop", search: { search: item } });
-                            }}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-muted text-xs text-ink/80 hover:bg-muted/80 hover:text-brand transition cursor-pointer"
-                          >
-                            {item}
-                          </button>
-                        ))}
+                  {searchVal.trim() ? (
+                    <div className="space-y-3 text-left">
+                      <div className="flex items-center justify-between border-b border-border/60 pb-1.5">
+                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                          Matching ({liveSearchResults.length})
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowMobileDropdown(false);
+                            setOpen(false);
+                            navigate({ to: "/shop", search: { search: searchVal.trim() } });
+                          }}
+                          className="text-[11px] font-semibold text-brand underline cursor-pointer"
+                        >
+                          View in shop
+                        </button>
+                      </div>
+
+                      {liveSearchResults.length === 0 ? (
+                        <div className="py-2 text-center text-xs text-muted-foreground">
+                          No products found. Tap search to view shop.
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {liveSearchResults.map((p) => {
+                            const price = p.salePrice || p.price;
+                            return (
+                              <Link
+                                key={p.id}
+                                to="/product/$id"
+                                params={{ id: p.id }}
+                                className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-muted/60 transition duration-150"
+                                onClick={() => {
+                                  setShowMobileDropdown(false);
+                                  setOpen(false);
+                                }}
+                              >
+                                <div className="size-10 shrink-0 overflow-hidden rounded-md border border-border bg-white p-0.5">
+                                  <img src={p.image ? p.image.split('|||')[0] : ''} alt={p.name} className="size-full object-contain" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-xs font-semibold truncate text-ink">{p.name}</div>
+                                  <div className="text-[10px] text-muted-foreground">{p.category}</div>
+                                </div>
+                                <div className="text-xs font-bold text-brand shrink-0">
+                                  Rs. {price.toLocaleString()}
+                                </div>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-4 text-left">
+                      <div>
+                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Trending Searches</h4>
+                        <div className="flex flex-wrap gap-1.5">
+                          {trendingSearches.map((item) => (
+                            <button
+                              key={item}
+                              type="button"
+                              onClick={() => {
+                                setSearchVal(item);
+                                setShowMobileDropdown(false);
+                                setOpen(false);
+                                navigate({ to: "/shop", search: { search: item } });
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-muted text-xs text-ink/80 hover:bg-muted/80 hover:text-brand transition cursor-pointer"
+                            >
+                              {item}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Latest Products</h4>
+                        <div className="space-y-2">
+                          {latestProducts.map((p) => {
+                            const price = p.salePrice || p.price;
+                            return (
+                              <Link
+                                key={p.id}
+                                to="/product/$id"
+                                params={{ id: p.id }}
+                                className="flex items-center gap-2.5 p-1 rounded-lg hover:bg-muted/50 transition duration-150"
+                                onClick={() => {
+                                  setShowMobileDropdown(false);
+                                  setOpen(false);
+                                }}
+                              >
+                                <div className="size-10 shrink-0 overflow-hidden rounded-md border border-border bg-white p-0.5">
+                                  <img src={p.image ? p.image.split('|||')[0] : ''} alt={p.name} className="size-full object-contain" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-xs font-semibold truncate">{p.name}</div>
+                                  <div className="text-[10px] text-muted-foreground">Rs. {price.toLocaleString()}</div>
+                                </div>
+                              </Link>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Latest Products</h4>
-                      <div className="space-y-2">
-                        {latestProducts.map((p) => (
-                          <Link
-                            key={p.id}
-                            to="/product/$id"
-                            params={{ id: p.id }}
-                            className="flex items-center gap-2.5 p-1 rounded-lg hover:bg-muted/50 transition duration-150"
-                            onClick={() => {
-                              setShowMobileDropdown(false);
-                              setOpen(false);
-                            }}
-                          >
-                            <div className="size-10 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
-                              <img src={p.image ? p.image.split('|||')[0] : ''} alt={p.name} className="size-full object-cover" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="text-xs font-semibold truncate">{p.name}</div>
-                              <div className="text-[10px] text-muted-foreground">Rs. {p.price.toLocaleString()}</div>
-                            </div>
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
               )}
             </form>
