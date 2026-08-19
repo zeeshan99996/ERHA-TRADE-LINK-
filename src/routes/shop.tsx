@@ -8,6 +8,8 @@ import { openCartDrawer } from "@/components/site/CartDrawer";
 import { toast } from "sonner";
 import { ShoppingCart, Star, Zap, Search, X, Sparkles, Filter } from "lucide-react";
 
+import { matchesSearchQuery, matchesCategoryQuery } from "@/lib/search";
+
 export const Route = createFileRoute("/shop")({
   validateSearch: (search: Record<string, unknown>) => ({
     search: typeof search.search === "string" ? search.search : typeof search.q === "string" ? search.q : "",
@@ -33,101 +35,6 @@ export const Route = createFileRoute("/shop")({
   }),
   component: ShopComponent,
 });
-
-/* ────────────────────────────────────────────
-   Smart Search & Category Matching Helpers
-──────────────────────────────────────────── */
-function matchesSearch(product: any, query: string): boolean {
-  if (!query || !query.trim()) return true;
-  const q = query.toLowerCase().trim();
-  const name = String(product.name || "").toLowerCase();
-  const category = String(product.category || "").toLowerCase();
-  const desc = String(product.shortDescription || product.description || "").toLowerCase();
-  const brand = String(product.brand || "").toLowerCase();
-  const sku = String(product.sku || "").toLowerCase();
-
-  // If user searched for power bank variations
-  if (
-    q.includes("power") ||
-    q.includes("bank") ||
-    q.includes("battery") ||
-    q.includes("pzx") ||
-    q.includes("10000") ||
-    q.includes("mah")
-  ) {
-    if (
-      name.includes("power") ||
-      name.includes("bank") ||
-      category.includes("power") ||
-      category.includes("compact") ||
-      desc.includes("power") ||
-      desc.includes("bank")
-    ) {
-      return true;
-    }
-    // If exact earbuds search, don't match power bank
-    if (q.includes("earbud") || q.includes("audio")) {
-      return false;
-    }
-  }
-
-  // If user searched for earbuds / audio variations
-  if (
-    q.includes("ear") ||
-    q.includes("bud") ||
-    q.includes("headphone") ||
-    q.includes("airpod") ||
-    q.includes("audio") ||
-    q.includes("zoro") ||
-    q.includes("tltm") ||
-    q.includes("anc") ||
-    q.includes("enc") ||
-    q.includes("bass") ||
-    q.includes("tws")
-  ) {
-    if (
-      name.includes("earbud") ||
-      name.includes("earbuds") ||
-      name.includes("wireless") ||
-      name.includes("bluetooth") ||
-      category.includes("earbuds") ||
-      category.includes("audio") ||
-      desc.includes("earbuds")
-    ) {
-      return true;
-    }
-    // If query is specifically earbuds, don't match power bank
-    if (!q.includes("power") && !q.includes("bank")) {
-      if (name.includes("power bank")) return false;
-    }
-  }
-
-  // Standard token matching across all product metadata
-  const tokens = q.split(/\s+/).filter(Boolean);
-  return tokens.every(
-    (token) =>
-      name.includes(token) ||
-      category.includes(token) ||
-      desc.includes(token) ||
-      brand.includes(token) ||
-      sku.includes(token)
-  );
-}
-
-function matchesCategory(product: any, cat: string): boolean {
-  if (!cat || cat === "All") return true;
-  const c = cat.toLowerCase();
-  const pCat = String(product.category || "").toLowerCase();
-  const pName = String(product.name || "").toLowerCase();
-
-  if (c.includes("power")) {
-    return pCat.includes("power") || pCat.includes("compact") || pName.includes("power") || pName.includes("bank");
-  }
-  if (c.includes("earbud")) {
-    return pCat.includes("earbuds") || pName.includes("earbuds") || pName.includes("earbud");
-  }
-  return pCat.includes(c);
-}
 
 /* ────────────────────────────────────────────
    Animated heading — letters slide in + glow
@@ -331,6 +238,15 @@ function ShopComponent() {
   }, [searchParam]);
 
   useEffect(() => {
+    const handleHeaderQuery = (e: any) => {
+      const q = e.detail || "";
+      setLocalSearch(q);
+    };
+    window.addEventListener("erha_search_query" as any, handleHeaderQuery);
+    return () => window.removeEventListener("erha_search_query" as any, handleHeaderQuery);
+  }, []);
+
+  useEffect(() => {
     const load = async () => {
       const prods = await db.getProducts();
       const active = (prods || []).filter((p: any) => p && (p.status === "Active" || !p.status));
@@ -374,6 +290,10 @@ function ShopComponent() {
 
   const handleClearSearch = () => {
     setLocalSearch("");
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("erha_search_query", { detail: "" }));
+      window.dispatchEvent(new CustomEvent("erha_search_reset"));
+    }
     navigate({
       search: (prev) => ({
         ...prev,
@@ -391,12 +311,14 @@ function ShopComponent() {
     });
   };
 
-  // Filter products based on search term & category
+  const activeSearchQuery = localSearch || searchParam || "";
+
+  // Filter products based on search term & category using shared search helpers
   const filteredProducts = products.filter(
-    (p) => matchesCategory(p, categoryParam) && matchesSearch(p, searchParam)
+    (p) => matchesCategoryQuery(p, categoryParam) && matchesSearchQuery(p, activeSearchQuery)
   );
 
-  const hasActiveFilters = Boolean(searchParam && searchParam.trim()) || (categoryParam && categoryParam !== "All");
+  const hasActiveFilters = Boolean(activeSearchQuery && activeSearchQuery.trim()) || (categoryParam && categoryParam !== "All");
 
   return (
     <div className="min-h-screen bg-[#f8fafd]">

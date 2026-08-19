@@ -12,32 +12,9 @@ const navItems = [
   { name: "Contact", to: "/contact" }
 ];
 
+import { matchesSearchQuery } from "@/lib/search";
+
 const trendingSearches = ["Power Banks", "Wireless Earbuds", "Fast Chargers", "Smart Watches"];
-
-function matchesHeaderSearch(product: any, query: string): boolean {
-  if (!query || !query.trim()) return false;
-  const q = query.toLowerCase().trim();
-  const name = String(product.name || "").toLowerCase();
-  const category = String(product.category || "").toLowerCase();
-  const desc = String(product.shortDescription || "").toLowerCase();
-
-  // If user searched for power bank
-  if (q.includes("power") || q.includes("bank") || q.includes("battery") || q.includes("pzx")) {
-    if (name.includes("power") || name.includes("bank") || category.includes("power") || category.includes("compact")) {
-      return true;
-    }
-  }
-
-  // If user searched for earbuds
-  if (q.includes("ear") || q.includes("bud") || q.includes("airpod") || q.includes("zoro") || q.includes("tltm") || q.includes("wireless") || q.includes("audio")) {
-    if (name.includes("earbud") || name.includes("wireless") || category.includes("earbuds") || category.includes("audio")) {
-      return true;
-    }
-  }
-
-  const tokens = q.split(/\s+/).filter(Boolean);
-  return tokens.every((tok) => name.includes(tok) || category.includes(tok) || desc.includes(tok));
-}
 
 export function Header() {
   const [open, setOpen] = useState(false);
@@ -76,11 +53,30 @@ export function Header() {
     };
   }, []);
 
+  // Listen for reset events from page clear buttons
+  useEffect(() => {
+    const handleReset = () => {
+      setSearchVal("");
+    };
+    window.addEventListener("erha_search_reset", handleReset);
+    return () => window.removeEventListener("erha_search_reset", handleReset);
+  }, []);
+
+  const handleInputChange = (val: string) => {
+    setSearchVal(val);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("erha_search_query", { detail: val }));
+    }
+  };
+
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setShowDropdown(false);
     setShowMobileDropdown(false);
     setOpen(false);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("erha_search_query", { detail: searchVal.trim() }));
+    }
     navigate({
       to: "/shop",
       search: { search: searchVal.trim() },
@@ -105,7 +101,7 @@ export function Header() {
   const activeProducts = productsList.filter((p) => p.status === "Active" || !p.status);
   const latestProducts = activeProducts.slice(0, 3);
   const liveSearchResults = searchVal.trim()
-    ? activeProducts.filter((p) => matchesHeaderSearch(p, searchVal))
+    ? activeProducts.filter((p) => matchesSearchQuery(p, searchVal))
     : [];
 
   return (
@@ -157,7 +153,7 @@ export function Header() {
               className="w-full bg-transparent px-3 py-3 text-sm outline-none placeholder:text-muted-foreground"
               value={searchVal}
               onChange={(e) => {
-                setSearchVal(e.target.value);
+                handleInputChange(e.target.value);
                 setShowDropdown(true);
               }}
               onFocus={() => setShowDropdown(true)}
@@ -236,7 +232,7 @@ export function Header() {
                           <button
                             type="button"
                             onClick={() => {
-                              setSearchVal(item);
+                              handleInputChange(item);
                               navigate({ to: "/shop", search: { search: item } });
                               setShowDropdown(false);
                             }}
@@ -334,7 +330,10 @@ export function Header() {
                   className="w-full bg-transparent text-sm outline-none"
                   placeholder="Search products…"
                   value={searchVal}
-                  onChange={(e) => setSearchVal(e.target.value)}
+                  onChange={(e) => {
+                    handleInputChange(e.target.value);
+                    setShowMobileDropdown(true);
+                  }}
                   onFocus={() => setShowMobileDropdown(true)}
                 />
               </div>
@@ -406,7 +405,7 @@ export function Header() {
                               key={item}
                               type="button"
                               onClick={() => {
-                                setSearchVal(item);
+                                handleInputChange(item);
                                 setShowMobileDropdown(false);
                                 setOpen(false);
                                 navigate({ to: "/shop", search: { search: item } });

@@ -7,6 +7,8 @@ import { WhyChoose } from "@/components/site/WhyChoose";
 import { Footer } from "@/components/site/Footer";
 import { useState, useEffect } from "react";
 import { db } from "@/lib/supabase";
+import { matchesSearchQuery } from "@/lib/search";
+import { Sparkles, X } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   loader: async () => {
@@ -40,6 +42,7 @@ export const Route = createFileRoute("/")({
 function Index() {
   const loaderData = Route.useLoaderData() as { products: any[] } | undefined;
   const [featured, setFeatured] = useState<any[]>(loaderData?.products || []);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -54,15 +57,53 @@ function Index() {
     return () => window.removeEventListener("storage", loadProducts);
   }, [loaderData]);
 
+  useEffect(() => {
+    const handleSearch = (e: any) => {
+      setSearchQuery(e.detail || "");
+    };
+    window.addEventListener("erha_search_query" as any, handleSearch);
+    return () => window.removeEventListener("erha_search_query" as any, handleSearch);
+  }, []);
+
+  const displayProducts = searchQuery.trim()
+    ? featured.filter((p) => matchesSearchQuery(p, searchQuery))
+    : featured;
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <main>
-        <Hero products={featured} />
-        <CategoryMarquee />
+        {!searchQuery.trim() && <Hero products={featured} />}
+        {!searchQuery.trim() && <CategoryMarquee />}
+
+        {searchQuery.trim() && (
+          <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6">
+            <div className="flex items-center justify-between bg-cyan-50 border border-cyan-200 rounded-2xl px-5 py-3 text-xs sm:text-sm text-slate-800">
+              <div className="flex items-center gap-2">
+                <Sparkles className="size-4 text-cyan-600 shrink-0" />
+                <span>
+                  Showing <strong>{displayProducts.length}</strong> {displayProducts.length === 1 ? "product" : "products"} for "<strong>{searchQuery}</strong>"
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  if (typeof window !== "undefined") {
+                    window.dispatchEvent(new CustomEvent("erha_search_query", { detail: "" }));
+                    window.dispatchEvent(new CustomEvent("erha_search_reset"));
+                  }
+                }}
+                className="inline-flex items-center gap-1 font-semibold text-cyan-700 hover:text-cyan-900 cursor-pointer"
+              >
+                <X className="size-4" /> Clear
+              </button>
+            </div>
+          </div>
+        )}
+
         <ProductGrid
-          title="OUR PREMIUM PRODUCTS"
-          items={featured.slice(0, 8)}
+          title={searchQuery.trim() ? `SEARCH RESULTS FOR "${searchQuery.toUpperCase()}"` : "OUR PREMIUM PRODUCTS"}
+          items={displayProducts.slice(0, 8)}
           centered
           compact
         />
