@@ -13,47 +13,51 @@ export function matchesSearchQuery(product: any, query: string): boolean {
   // Stem helper
   const stem = (w: string) => w.replace(/(?:s|es|ies)$/i, "").toLowerCase();
 
-  // 1. Is this query specifically for Power Banks / Charging?
-  const isPowerQuery =
+  // 1. Generic Power Bank Search Queries
+  const isGenericPowerQuery =
     rawQ.includes("power") ||
     rawQ.includes("bank") ||
-    rawQ.includes("battery") ||
-    rawQ.includes("pzx") ||
+    rawQ.includes("battery pack") ||
     rawQ.includes("10000") ||
     rawQ.includes("mah");
 
-  // 2. Is this query specifically for Earbuds / Audio / Headphones?
-  const isEarbudQuery =
+  // 2. Generic Earbud Search Queries
+  const isGenericEarbudQuery =
     rawQ.includes("ear") ||
     rawQ.includes("bud") ||
     rawQ.includes("airpod") ||
     rawQ.includes("headphone") ||
-    rawQ.includes("zoro") ||
-    rawQ.includes("tltm") ||
-    rawQ.includes("anc") ||
-    rawQ.includes("enc") ||
+    rawQ.includes("handsfree") ||
     rawQ.includes("tws") ||
     rawQ.includes("audio");
 
-  if (isPowerQuery && !isEarbudQuery) {
-    return (
-      name.includes("power bank") ||
-      name.includes("power") ||
-      name.includes("bank") ||
-      category.includes("compact") ||
-      category.includes("power")
-    );
-  }
+  // Specific brand checks
+  const isSpecificBrandSearch =
+    rawQ.includes("zoro") ||
+    rawQ.includes("tltm") ||
+    rawQ.includes("pzx");
 
-  if (isEarbudQuery && !isPowerQuery) {
-    return (
-      name.includes("earbud") ||
-      name.includes("earbuds") ||
-      name.includes("wireless") ||
-      name.includes("bluetooth") ||
-      category.includes("earbuds") ||
-      category.includes("audio")
-    );
+  if (!isSpecificBrandSearch) {
+    if (isGenericPowerQuery && !isGenericEarbudQuery) {
+      return (
+        name.includes("power bank") ||
+        name.includes("power") ||
+        name.includes("bank") ||
+        category.includes("compact") ||
+        category.includes("power")
+      );
+    }
+
+    if (isGenericEarbudQuery && !isGenericPowerQuery) {
+      return (
+        name.includes("earbud") ||
+        name.includes("earbuds") ||
+        name.includes("wireless") ||
+        name.includes("bluetooth") ||
+        category.includes("earbuds") ||
+        category.includes("audio")
+      );
+    }
   }
 
   // 3. Multi-word token matching with stemming
