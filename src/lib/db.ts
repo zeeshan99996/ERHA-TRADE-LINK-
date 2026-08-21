@@ -54,6 +54,11 @@ const KEYS = {
   ADMINS: 'erha_admins_local_v4',
 };
 
+const STORE_API_BASE = (
+  (typeof window !== 'undefined' && window.location.origin) ||
+  'https://erhatradelinkinternational.com'
+).replace(/\/$/, '') + '/api/admin';
+
 import { DEFAULT_PRODUCTS, DEFAULT_CATEGORIES } from "./server-store";
 
 const initialProducts: any[] = [...DEFAULT_PRODUCTS];
@@ -264,6 +269,16 @@ export const db = {
   getOrders: async (): Promise<any[]> => {
     const cached = getStorage(KEYS.ORDERS, initialOrders);
     try {
+      const res = await fetch(`${STORE_API_BASE}/orders`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          setStorage(KEYS.ORDERS, json.data);
+          return json.data;
+        }
+      }
+    } catch (e) {}
+    try {
       const mysqlRes = await fetchOrdersServerFn();
       if (mysqlRes.success && mysqlRes.data) {
         setStorage(KEYS.ORDERS, mysqlRes.data);
@@ -316,6 +331,18 @@ export const db = {
       window.dispatchEvent(new Event('erha_orders_update'));
     }
 
+    // 1. Direct API Sync to Hostinger backend for instant admin visibility
+    try {
+      await fetch(`${STORE_API_BASE}/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newOrder),
+      });
+    } catch (apiErr) {
+      console.warn("Backend API createOrder sync warning:", apiErr);
+    }
+
+    // 2. Server Fn fallback
     try {
       await createOrderServerFn({ data: newOrder });
       
@@ -348,6 +375,13 @@ export const db = {
       orders[idx].orderStatus = status;
       setStorage(KEYS.ORDERS, orders);
       try {
+        await fetch(`${STORE_API_BASE}/orders`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(orders[idx]),
+        });
+      } catch (e) {}
+      try {
         await createOrderServerFn({ data: orders[idx] });
       } catch (e) {
         console.warn("Hostinger MySQL updateOrderStatus error:", e);
@@ -362,6 +396,13 @@ export const db = {
       orders[idx].paymentStatus = payStatus;
       setStorage(KEYS.ORDERS, orders);
       try {
+        await fetch(`${STORE_API_BASE}/orders`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(orders[idx]),
+        });
+      } catch (e) {}
+      try {
         await createOrderServerFn({ data: orders[idx] });
       } catch (e) {
         console.warn("Hostinger MySQL updateOrderPaymentStatus error:", e);
@@ -373,6 +414,14 @@ export const db = {
     const orders = getStorage(KEYS.ORDERS, []);
     const updated = orders.filter((x: any) => String(x.id) !== String(id));
     setStorage(KEYS.ORDERS, updated);
+
+    try {
+      await fetch(`${STORE_API_BASE}/orders?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+    } catch (e) {}
 
     try {
       await deleteOrderServerFn({ data: { id } });
