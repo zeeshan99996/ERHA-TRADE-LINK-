@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * ERHA Trade Link - Universal Backend API
  * Handles Orders, Products, Categories, Customers, Coupons, Payments, Admin Auth
@@ -282,13 +282,15 @@ switch ($endpoint) {
                 saveJsonData('customers', $customers);
             }
 
-            // Auto create notification
+            // Auto create notification & Push Alert
+            $notifTitle = '🚨 New Order Received!';
+            $notifDesc = ($order['customer'] ?? 'Customer') . ' placed ' . ($order['id'] ?? 'order') . ' for Rs. ' . number_format($order['total'] ?? 0);
             $notifications = getJsonData('notifications', []);
             array_unshift($notifications, [
                 'id' => 'N' . time(),
                 'type' => 'order',
-                'title' => 'New Order ' . $order['id'],
-                'description' => ($order['customer'] ?? 'Customer') . ' placed an order for Rs. ' . number_format($order['total'] ?? 0),
+                'title' => $notifTitle,
+                'description' => $notifDesc,
                 'time' => date('c'),
                 'read' => false
             ]);
